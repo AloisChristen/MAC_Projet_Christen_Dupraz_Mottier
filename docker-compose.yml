@@ -1,0 +1,28 @@
+version: '3'
+services:
+  documentdb:
+    image: mongo:4.2
+    networks:
+      - backend
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: toor
+      MONGO_INITDB_DATABASE: mac2020
+    ports:
+      - 27017:27017
+  graphdb:
+    image: neo4j:3.5
+    environment:
+      NEO4J_AUTH: none
+    networks:
+      - backend
+    ports:
+      - 7474:7474
+      - 7687:7687
+#  bot:
+#    image: teach-mac2019-p1:0.1
+#    networks:
+#      - backend
+networks:
+  backend:
+    driver: "bridge"
