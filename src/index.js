@@ -16,12 +16,12 @@ function stripMargin(template, ...expressions) {
   return result.replace(/(\n|\r|\r\n)\s*\|/g, '$1');
 }
 
-function buildLikeKeyboard(movieId, currentLike) {
+function buildLikeKeyboard(gameId, currentLike) {
   return {
     inline_keyboard: [
       [1,2,3,4,5].map((v) => ({
         text: currentLike && currentLike.rank === v ? "★".repeat(v) : "☆".repeat(v),
-        callback_data: v + '__' + movieId, // payload that will be retrieved when button is pressed
+        callback_data: v + '__' + gameId, // payload that will be retrieved when button is pressed
       })),
     ],
   }
@@ -30,21 +30,20 @@ function buildLikeKeyboard(movieId, currentLike) {
 // User is using the inline query mode on the bot
 bot.on('inline_query', (ctx) => {
   const query = ctx.inlineQuery;
-  if (query) {
-    documentDAO.getMovies(query.query).then((movies) => {
-      const answer = movies.map((movie) => ({
-        id: movie._id,
+  if (query) { 
+    documentDAO.getGames(query.query).then((games) => {
+      const answer = games.map((game) => ({
+        id: game._id,
         type: 'article',
-        title: movie.title,
-        description: movie.description,
-        reply_markup: buildLikeKeyboard(movie._id),
+        title: game.name,
+        description: game.description,
+        reply_markup: buildLikeKeyboard(game._id),
         input_message_content: {
           message_text: stripMargin`
-            |Title: ${movie.title}
-            |Description: ${movie.description},
-            |Year: ${movie.year}
-            |Actors: ${movie.actors}
-            |Genres: ${movie.genre}
+            |Title: ${game.name}
+            |Year: ${game.year}
+            |Platforms : ${game.platform}
+            |Genres: ${game.genre}
           `
         },
       }));
@@ -53,11 +52,11 @@ bot.on('inline_query', (ctx) => {
   }
 });
 
-// User chose a movie from the list displayed in the inline query
+// User chose a game from the list displayed in the inline query
 // Used to update the keyboard and show filled stars if user already liked it
 bot.on('chosen_inline_result', (ctx) => {
   if (ctx.from && ctx.chosenInlineResult) {
-    graphDAO.getMovieLiked(ctx.from.id, ctx.chosenInlineResult.result_id).then((liked) => {
+    graphDAO.getGameLiked(ctx.from.id, ctx.chosenInlineResult.result_id).then((liked) => {
       if (liked !== null) {
         ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, liked));
       }  
@@ -67,21 +66,21 @@ bot.on('chosen_inline_result', (ctx) => {
 
 bot.on('callback_query', (ctx) => {
   if (ctx.callbackQuery && ctx.from) {
-    const [rank, movieId] = ctx.callbackQuery.data.split('__');
+    const [rank, gameId] = ctx.callbackQuery.data.split('__');
     const liked = {
       rank: parseInt(rank, 10),
       at: new Date()
     };
 
-    graphDAO.upsertMovieLiked({
+    graphDAO.upsertGameLiked({
       first_name: 'unknown',
       last_name: 'unknown',
       language_code: 'fr',
       is_bot: false,
       username: 'unknown',
       ...ctx.from,
-    }, movieId, liked).then(() => {
-      ctx.editMessageReplyMarkup(buildLikeKeyboard(movieId, liked));
+    }, gameId, liked).then(() => {
+      ctx.editMessageReplyMarkup(buildLikeKeyboard(gameId, liked));
     }); 
   }
 });
@@ -91,16 +90,16 @@ bot.command('help', (ctx) => {
   ctx.reply(`
 A demo for the project given in the MAC course at the HEIG-VD.
 
-A user can display a movie and set a reaction to this movie (like, dislike).
-When asked, the bot will provide a recommendation based on the movies he liked or disliked.
+A user can display a game and set a reaction to this game (like, dislike).
+When asked, the bot will provide a recommendation based on the games he liked or disliked.
 
-Use inline queries to display a movie, then use the inline keyboard of the resulting message to react.
+Use inline queries to display a game, then use the inline keyboard of the resulting message to react.
 Use the command /recommendactor to get a personalized recommendation.
   `);
 });
 
 bot.command('start', (ctx) => {
-  ctx.reply('HEIG-VD Mac project example bot in javascript');
+  ctx.reply('HEIG-VD Mac project bot in javascript');
 });
 
 bot.command('recommendactor', (ctx) => {
@@ -108,7 +107,7 @@ bot.command('recommendactor', (ctx) => {
     ctx.reply('We cannot guess who you are');
   } else {
     graphDAO.recommendActors(ctx.from.id).then((records) => {
-      if (records.length === 0) ctx.reply("You haven't liked enough movies to have recommendations");
+      if (records.length === 0) ctx.reply("You haven't liked enough games to have recommendations");
       else {
         const actorsList = records.map((record) => {
           const name = record.get('a').properties.name;

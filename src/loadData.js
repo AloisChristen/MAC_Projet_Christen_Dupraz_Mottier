@@ -31,8 +31,9 @@ const shuffle = (array) => {
 };
 
 const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/games.csv')).then((baseGames) => {
-    parse(baseGames, (err, data) => {
+  fs.readFile(join(__dirname, '../data/games_old.csv')).then((baseGames) => {
+      parse(baseGames, (err, data) => {
+      if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
     });
   });
@@ -96,23 +97,22 @@ documentDAO.init().then(() => {
             // Retrieve all genres and platforms from all games, split them and assign a numeric id
             console.log('Calculating genres and platforms');
             const genres = [...new Set(games.flatMap((it) => it.genre.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
-            const platforms = [...new Set(games.flatMap((it) => it.platform.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
+            const platforms = [...new Set(games.flatMap((it) => 
+                it.platform.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
 
             console.log('Handling game insertion in Neo4j');
             const gamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
             gamesBar.start(games.length, 0);
 
             Promise.all(games.map((game) => new Promise((resolve1) => {
-              console.log(game.genre);
-              console.log(game.platform);
               const gameGenres = game.genre.split(',').map(i => i.trim());
               const gamePlatforms = game.platform.split(',').map(i => i.trim());
 
-              graphDAO.upsertGame(game._id, game.name).then(() => {
+              graphDAO.upsertGame(game._id, game.basename).then(() => {
 
                 // Update actor <-> game links
                 Promise.all(gamePlatforms.map((name) => {
-                  const id = platform.find((it) => it[1] === name)[0];
+                  const id = platforms.find((it) => it[1] === name)[0];
                   return graphDAO.upsertPlatform(game._id, { id, name });
                 })).then(() => {
 

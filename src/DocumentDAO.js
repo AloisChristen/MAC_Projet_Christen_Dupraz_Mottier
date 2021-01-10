@@ -29,7 +29,7 @@ class DocumentDAO {
   }
 
   getGames(search) {
-    return this.collection.find({ 'title': new RegExp(search) }).limit(10).toArray();
+    return this.collection.find({ 'name': new RegExp(search, "i") }).limit(10).toArray();
   }
 
   getGameById(id) {
