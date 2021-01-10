@@ -9,7 +9,7 @@ class GraphDAO {
 
   prepare() {
     return new Promise((resolve) => {
-      this.run("CREATE CONSTRAINT ON (n:Movie) ASSERT n.id IS UNIQUE", {}).then(() => {
+      this.run("CREATE CONSTRAINT ON (n:Game) ASSERT n.id IS UNIQUE", {}).then(() => {
         this.run("CREATE CONSTRAINT ON (u:User) ASSERT u.id IS UNIQUE", {}).then(() => resolve());
       });
     });
@@ -19,7 +19,7 @@ class GraphDAO {
     return this.driver.close();
   }
 
-  upsertMovieLiked(user, movieId, liked) {
+  upsertGameLiked(user, movieId, liked) {
     return this.run(`
       MATCH (m:Movie {id: $movieId})
         MERGE (u:User {id: $userId})
@@ -74,7 +74,7 @@ class GraphDAO {
     })
   }
 
-  upsertActor(movieId, actor) {
+  upsertPlatform(movieId, actor) {
     return this.run(`
       MATCH (m:Movie{ id: $movieId })
       MERGE (a:Actor{id: $actorId})
