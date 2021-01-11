@@ -1,12 +1,11 @@
 data :
     - Check les imports :
         - insertions des platforms et genre dans Neo4j
-        - import des utilisateurs
+		- insertions des streamer dans MongoDB
+			- insertions des streamer_id dans Neo4j
     - commandes :
-        - /start permet de se connecter ou de s'inscrire [x]
-        - /recommandation:
+        - /recommandation: Dans Neo4j
             - jeux en fonction des jeux likés
             - streamer en fonction des jeux likées
         - inline : 
-            - recherche ignorant la plateform, ou l'indicant dans la sélection
-        
+            - recherche ignorant la plateform, ou l'indicant dans la sélection [x]

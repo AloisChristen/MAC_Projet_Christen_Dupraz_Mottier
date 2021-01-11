@@ -29,7 +29,17 @@ class DocumentDAO {
   }
 
   getGames(search) {
-    return this.collection.find({ 'name': new RegExp(search, "i") }).limit(10).toArray();
+
+    return this.collection.aggregate([
+      { $match: { 'name': new RegExp(search, "gi") }},
+      { $limit: 10},
+      { $group: { _id: "$name",
+                  platform: {$addToSet: "$platform"},
+                  _year: { $min: "$year"},
+                  genres: {$addToSet: "$genre"}
+      }},
+      { $limit: 10}
+    ]).toArray();
   }
 
   getGameById(id) {

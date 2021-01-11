@@ -35,15 +35,15 @@ bot.on('inline_query', (ctx) => {
       const answer = games.map((game) => ({
         id: game._id,
         type: 'article',
-        title: game.name,
+        title: game._id,
         description: game.description,
         reply_markup: buildLikeKeyboard(game._id),
         input_message_content: {
           message_text: stripMargin`
-            |Title: ${game.name}
-            |Year: ${game.year}
+            |Title: ${game._id}
+            |Year: ${game._year}
             |Platforms : ${game.platform}
-            |Genres: ${game.genre}
+            |Genres: ${game.genres}
           `
         },
       }));
