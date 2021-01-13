@@ -74,7 +74,7 @@ async function parseGame() {
   const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   let parsedGames = await parseGames();
   console.log("Writing games to mongo");
-  parseGamesBar.start(parsedGames.length, 0);
+  parseGamesBar.start(parsedGames.length, 9);
   return Promise.all(parsedGames.slice(1).map((it) => {
     const [
       basename,
@@ -112,11 +112,9 @@ async function loadGames() {
 function calculateGenreAndPlatForms(games) {
   // Retrieve all genres and platforms from all games, split them and assign a numeric id
   console.log('Calculating genres and platforms');
-  console.log("Games : " + games);
   const genres = [... new Set(games.flatMap((it) => it.genre.trim()))].map((it, i) => [i,it]);
   const platforms = [...new Set(games.flatMap((it) =>
       it.platform.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
-  console.log("Genres" + genres);
   return {
     genres: genres,
     platforms: platforms
@@ -130,26 +128,28 @@ function insertInNeo4j(games, genres, platforms){
   Promise.all(games.map((game) => new Promise((resolve1) => {
     const gameGenres = game.genre.split(',').map(i => i.trim());
     const gamePlatforms = game.platform.split(',').map(i => i.trim());
-
     graphDAO.upsertGame(game._id, game.basename).then(() => {
 
-      // Update actor <-> game links
-      // Promise.all(gamePlatforms.map((name) => {
-      //   const id = platforms.find((it) => it[1] === name)[0];
-      //   return graphDAO.upsertPlatform(game._id, { id, name });
-      // })).then(() => {
-      // Update genre <-> game links
-      Promise.all(gameGenres.map((name) => {
-        const id = genres.find((it) => it[1] === name)[0];
-        return graphDAO.upsertGenre(game._id, {id, name});
+      // Update platform <-> game links
+      Promise.all(gamePlatforms.map((name) => {
+        const id = platforms.find((it) => it[1] === name)[0];
+        return graphDAO.upsertPlatform(game._id, { id, name });
       })).then(() => {
-        gamesBar.increment();
-        resolve1();
+        // Update genre <-> game links
+        Promise.all(gameGenres.map((name) => {
+          const id = genres.find((it) => it[1] === name)[0];
+          return graphDAO.upsertGenre(game._id, {id, name});
+        })).then(() => {
+          gamesBar.increment();
+          resolve1();
+        });
       });
     });
   }).then(() => {
-    gamesBar.stop();
-  })));
+  gamesBar.stop();
+}))).then(() => {
+  console.log("Data loaded");
+  });
 }
 
 function addData() {
@@ -157,8 +157,6 @@ function addData() {
     parseGame().then(() => {
       loadGames().then((games) => {
         let data = calculateGenreAndPlatForms(games);
-        console.log("Genre : " + data.genres);
-        console.log("Platform : " + data.platforms);
         let genres = data.genres;
         let platforms = data.platforms;
         insertInNeo4j(games, genres, platforms);
@@ -176,7 +174,7 @@ documentDAO.init().then(() => {
   graphDAO.prepare().then(() => {
 
     emptyNeo4j().then(() => {
-      addData();
+      addData(); // TODO Fix end of program
     });
   });
 });

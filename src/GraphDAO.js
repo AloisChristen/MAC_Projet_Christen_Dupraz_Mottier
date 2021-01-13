@@ -74,16 +74,16 @@ class GraphDAO {
     })
   }
 
-  upsertPlatform(gameId, actor) {
+  upsertPlatform(gameId, platform) {
     return this.run(`
       MATCH (m:Game{ id: $gameId })
-      MERGE (a:Actor{id: $actorId})
-        ON CREATE SET a.name = $actorName
-      MERGE (a)-[r:PLAYED_IN]->(m)
+      MERGE (a:Platform{id: $platformId})
+        ON CREATE SET a.name = $platformName
+      MERGE (a)<-[r:PLAYED_ON]-(m)
     `, {
       gameId,
-      actorId: actor.id,
-      actorName: actor.name,
+      platformId: platform.id,
+      platformName: platform.name,
     });
   }
 
@@ -171,9 +171,9 @@ class GraphDAO {
     });
   }
 
-  upsertActorLiked(userId, actorId, liked) {
+  upsertPlatformLiked(userId, platformId, liked) {
     return this.run(`
-      MATCH (a:Actor{ id: $actorId })
+      MATCH (a:Platform{ id: $platformId })
       MATCH (u:User{ id: $userId })
       MERGE (u)-[r:LIKED]->(g)
       ON CREATE SET r.at = $at,
@@ -182,7 +182,7 @@ class GraphDAO {
                     r.rank = $rank
     `, {
       userId: this.toInt(userId),
-      actorId: this.toInt(actorId),
+      platformId: this.toInt(platformId),
       at: this.toDate(liked.at),
       rank: this.toInt(liked.rank)
     });
@@ -242,10 +242,10 @@ class GraphDAO {
     });
   }
 
-  recommendActors(userId) {
+  recommendPlatforms(userId) {
     /*
     return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(m:Game)<-[:PLAYED_IN]-(a:Actor)-[:PLAYED_IN]->(m2:Game)<-[l2:LIKED]-(u)
+      match (u:User{id: $userId})-[l:LIKED]->(m:Game)-[:PLAYED_ON]->(a:Platform)<-[:PLAYED_ON]-(m2:Game)<-[l2:LIKED]-(u)
       where id(m) < id(m2) and l.rank > 3 and l2.rank > 3
       return a, count(*)
       order by count(*) desc
@@ -255,7 +255,7 @@ class GraphDAO {
     }).then((result) => result.records);
     */
    return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(m:Game)<-[:PLAYED_IN]-(a:Actor)
+      match (u:User{id: $userId})-[l:LIKED]->(m:Game)-[:PLAYED_ON]->(a:Platform)
       return a, count(*)
       order by count(*) desc
       limit 5
