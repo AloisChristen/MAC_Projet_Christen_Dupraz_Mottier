@@ -50,13 +50,12 @@ class DocumentDAO {
     return this.collection.find().limit(n).toArray();
   }
 
-  getAllGames() {
-    return this.collection.find().toArray().then((result) => {
-      return result.map((it) => ({
-        ...it,
-        _id: it._id.toString()
-      }));
-    });
+  async getAllGames() {
+    let games = await this.collection.find().toArray();
+    return games.map((it) => ({
+      ...it,
+      _id: it._id.toString()
+    }));
   }
 }
 

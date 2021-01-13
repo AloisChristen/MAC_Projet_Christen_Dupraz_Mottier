@@ -31,7 +31,7 @@ const shuffle = (array) => {
 };
 
 const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/games_old.csv')).then((baseGames) => {
+  fs.readFile(join(__dirname, '../data/games.csv')).then((baseGames) => {
     parse(baseGames, (err, data) => {
       if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
@@ -69,53 +69,54 @@ function writeUsers() {
   return Promise.all(users.map((user) => graphDAO.upsertUser(user)));
 }
 
-function parseGame() {
-  console.log('Parsing CSV and writing games to mongo');
+async function parseGame() {
+  console.log('Parsing CSV');
   const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  parseGames().then((parsedGames) => {
-    parseGamesBar.start(parsedGames.length, 0);
-    Promise.all(parsedGames.slice(1).map((it) => {
-      const [
-        basename,
-        name,
-        genre,
-        platform,
-        publisher,
-        developer,
-        critic_score,
-        user_score,
-        year
-      ] = it;
-      return documentDAO.insertGame({
-        basename,
-        name,
-        genre,
-        platform,
-        publisher,
-        developer,
-        critic_score,
-        user_score,
-        year
-      }).then(() => parseGamesBar.increment());
-    })).then(() => {
-      parseGamesBar.stop();
-      return parsedGames;
-    });
+  let parsedGames = await parseGames();
+  console.log("Writing games to mongo");
+  parseGamesBar.start(parsedGames.length, 0);
+  return Promise.all(parsedGames.slice(1).map((it) => {
+    const [
+      basename,
+      name,
+      genre,
+      platform,
+      publisher,
+      developer,
+      critic_score,
+      user_score,
+      year
+    ] = it;
+    documentDAO.insertGame({
+      basename,
+      name,
+      genre,
+      platform,
+      publisher,
+      developer,
+      critic_score,
+      user_score,
+      year
+    }).then(() => parseGamesBar.increment());
+  })).then(() => {
+    parseGamesBar.stop();
   });
 }
 
-function loadGames() {
+async function loadGames() {
   // Load them back to get their id along
   console.log('Loading games back in memory');
-  return documentDAO.getAllGames();
+  return await documentDAO.getAllGames();
 }
 
 function calculateGenreAndPlatForms(games) {
   // Retrieve all genres and platforms from all games, split them and assign a numeric id
   console.log('Calculating genres and platforms');
-  const genres = [...new Set(games.flatMap((it) => it.genre.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
+  console.log("Games : " + games);
+  const genres = [... new Set(games.flatMap((it) => it.genre.trim()))].map((it, i) => [i,it]);
   const platforms = [...new Set(games.flatMap((it) =>
       it.platform.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
+  console.log("Genres" + genres);
   return {
     genres: genres,
     platforms: platforms
@@ -136,8 +137,7 @@ function insertInNeo4j(games, genres, platforms){
       // Promise.all(gamePlatforms.map((name) => {
       //   const id = platforms.find((it) => it[1] === name)[0];
       //   return graphDAO.upsertPlatform(game._id, { id, name });
-      //})).then(() => {
-
+      // })).then(() => {
       // Update genre <-> game links
       Promise.all(gameGenres.map((name) => {
         const id = genres.find((it) => it[1] === name)[0];
@@ -154,12 +154,15 @@ function insertInNeo4j(games, genres, platforms){
 
 function addData() {
   writeUsers().then(() => {
-    parseGame();
-    loadGames().then((games) => {
-      let data = calculateGenreAndPlatForms(games);
-      let genres = data.genres;
-      let platforms = data.platforms;
-      insertInNeo4j(games, genres, platforms);
+    parseGame().then(() => {
+      loadGames().then((games) => {
+        let data = calculateGenreAndPlatForms(games);
+        console.log("Genre : " + data.genres);
+        console.log("Platform : " + data.platforms);
+        let genres = data.genres;
+        let platforms = data.platforms;
+        insertInNeo4j(games, genres, platforms);
+      });
     });
   });
 }
