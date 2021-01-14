@@ -5,7 +5,7 @@ class DocumentDAO {
   constructor() {
     this.client = null;
     this.db = null;
-    this.collection = null;
+    this.gameCollection = null;
   }
 
   init() {
@@ -14,7 +14,8 @@ class DocumentDAO {
         if (err !== null) throw err;
         this.client = client;
         this.db = client.db(process.env.DOCUMENTDB_NAME);
-        this.collection = this.db.collection('mac2020');
+        this.gameCollection = this.db.collection('games');
+        this.streamerCollection = this.db.collection('streamers');
         resolve(null);
       });
     });
@@ -25,12 +26,16 @@ class DocumentDAO {
   }
 
   insertGame(game) {
-    return this.collection.insertOne(game);
+    return this.gameCollection.insertOne(game);
+  }
+
+  insertStreamer(streamer){
+    return this.streamerCollection.insertOne(streamer);
   }
 
   getGames(search) {
 
-    return this.collection.aggregate([
+    return this.gameCollection.aggregate([
       { $match: { 'name': new RegExp(search, "gi") }},
       { $limit: 10},
       { $group: { _id: "$name",
@@ -43,15 +48,15 @@ class DocumentDAO {
   }
 
   getGameById(id) {
-    return this.collection.findOne({ _id: id });
+    return this.gameCollection.findOne({ _id: id });
   }
 
   getRandomGames(n) {
-    return this.collection.find().limit(n).toArray();
+    return this.gameCollection.find().limit(n).toArray();
   }
 
   async getAllGames() {
-    let games = await this.collection.find().toArray();
+    let games = await this.gameCollection.find().toArray();
     return games.map((it) => ({
       ...it,
       _id: it._id.toString()

@@ -12,7 +12,9 @@
     "express": "^4.17.1",
     "mongodb": "^3.6.3",
     "neo4j-driver": "^4.2.1",
-    "telegraf": "^3.38.0"
+    "telegraf": "^3.38.0",
+    "twitch": "^4.4.0",
+    "twitch-auth": "^4.4.0"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.8.0",

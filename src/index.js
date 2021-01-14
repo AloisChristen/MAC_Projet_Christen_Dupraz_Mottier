@@ -2,6 +2,7 @@ const dotenv = require('dotenv');
 const Telegraf = require('telegraf');
 const DocumentDAO = require('./DocumentDAO');
 const GraphDAO = require('./GraphDAO');
+const TwitchAPI = require('./twitch_API');
 
 dotenv.config();
 

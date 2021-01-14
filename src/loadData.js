@@ -6,6 +6,7 @@ const { join } = require('path');
 
 const DocumentDAO = require('./DocumentDAO');
 const GraphDAO = require('./GraphDAO');
+const Twitch_API = require('./twitch_API');
 
 dotenv.config();
 
@@ -49,11 +50,13 @@ const users = [
 
 const graphDAO = new GraphDAO();
 const documentDAO = new DocumentDAO();
+const twitch_API = new Twitch_API();
+
 
 function emptyMongo() {
   console.log("Empty MondoDb");
 
-  documentDAO.collection.drop().then(() => {
+  documentDAO.gameCollection.drop().then(() => {
     return documentDAO;
   });
 }
@@ -160,12 +163,40 @@ function addData() {
         let genres = data.genres;
         let platforms = data.platforms;
         insertInNeo4j(games, genres, platforms);
+        loadGamesFromTwitch();
       });
     });
   });
 }
 
+function loadGamesFromTwitch() {
+  twitch_API.getTopGames(100).then((results) => {
+    let twitchGames = results.data;
+    twitchGames.forEach((twitchGame) => {
+      documentDAO.getGames(twitchGame.name).then((gamesFound) => {
+        if(gamesFound.length > 0){
+          console.log(gamesFound[0]);
+          twitchGame.getStreams().then((streams) => {
+            streams.data.forEach((stream) => {
+              console.log(stream.userDisplayName + " : " + stream.title);
+             stream.getUser().then((streamer) => {
+               documentDAO.insertStreamer({
+                 displayName: streamer.displayName,
+                 name: streamer.name,
+                 _id: streamer.id,
+                 language: stream.language,
+               });
+             });
+            })
+          })
+        }
+      })
+    })
+  })
+}
+
 // MAIN
+
 console.log('Starting mongo');
 documentDAO.init().then(() => {
 
@@ -174,7 +205,9 @@ documentDAO.init().then(() => {
   graphDAO.prepare().then(() => {
 
     emptyNeo4j().then(() => {
-      addData(); // TODO Fix end of program
+      addData();
+
+       // TODO Fix end of program
     });
   });
 });
