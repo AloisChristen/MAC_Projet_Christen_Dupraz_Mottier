@@ -16,11 +16,11 @@ class twitch_API {
         //TODO return more games
         let paginator = this.apiClient.helix.games.getTopGamesPaginated();
         let top_games = [];
-        console.log("Fetching top games streamed");
         for await (const games of paginator){
+            console.log("Number of fetched games : " + top_games.length);
             top_games = top_games.concat(games);
             if(top_games.length > number){
-                break
+                break;
             }
         }
         console.log("Games retrieved from Twitch : ");

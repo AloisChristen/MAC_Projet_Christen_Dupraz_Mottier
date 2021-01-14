@@ -169,38 +169,39 @@ function addData() {
         let genres = data.genres;
         let platforms = data.platforms;
         // insertInNeo4j(games, genres, platforms);
-        loadGamesFromTwitch().then();
+        loadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
       });
     });
   });
 }
 
 async function loadGamesFromTwitch() {
-  let twitchGames = await twitch_API.getTopGames(500);
+  let twitchGames = await twitch_API.getTopGames(1000);
   let nb_found_games = 0;
     twitchGames.forEach((twitchGame) => {
       documentDAO.getStrictGames(twitchGame.name).then((gamesFound) => {
         if(gamesFound.length > 0){
           nb_found_games++;
-          if(nb_found_games % 10 == 0){
+          if(nb_found_games % 10 === 0){
             console.log(nb_found_games);
           }
           // console.log("Games found for " + twitchGame.name);
           // console.log(gamesFound);
-          twitchGame.getStreams().then((streams) => {
-            streams.data.forEach((stream) => {
-              // console.log(stream.userDisplayName + " : " + stream.title);
-             stream.getUser().then((streamer) => {
-               documentDAO.insertStreamer({
-                 displayName: streamer.displayName,
-                 name: streamer.name,
-                 _id: streamer.id,
-                 language: stream.language,
-               });
-             });
-            })
-          })
+          // twitchGame.getStreams().then((streams) => {
+          //   streams.data.forEach((stream) => {
+          //     // console.log(stream.userDisplayName + " : " + stream.title);
+          //    stream.getUser().then((streamer) => {
+          //      documentDAO.insertStreamer({
+          //        displayName: streamer.displayName,
+          //        name: streamer.name,
+          //        _id: streamer.id,
+          //        language: stream.language,
+          //      });
+          //    });
+          //   })
+          // })
         }
+
       })
     })
 }
