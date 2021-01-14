@@ -12,9 +12,21 @@ class twitch_API {
         this.apiClient = new ApiClient({ authProvider });
     }
 
-    getTopGames(number = 10){
+    async getTopGames(number = 10){
         //TODO return more games
-        return this.apiClient.helix.games.getTopGames();
+        let paginator = this.apiClient.helix.games.getTopGamesPaginated();
+        let top_games = [];
+        console.log("Fetching top games streamed");
+        for await (const games of paginator){
+            top_games = top_games.concat(games);
+            if(top_games.length > number){
+                break
+            }
+        }
+        console.log("Games retrieved from Twitch : ");
+        console.log(top_games.map((g) => g.name));
+        return top_games;
+        // return this.apiClient.helix.games.getTopGames(paginator);
     }
 
 

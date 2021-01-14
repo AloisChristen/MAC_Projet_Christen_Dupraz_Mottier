@@ -32,7 +32,7 @@ const shuffle = (array) => {
 };
 
 const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/games.csv')).then((baseGames) => {
+  fs.readFile(join(__dirname, '../data/games_old.csv')).then((baseGames) => {
     parse(baseGames, (err, data) => {
       if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
@@ -53,11 +53,13 @@ const documentDAO = new DocumentDAO();
 const twitch_API = new Twitch_API();
 
 
-function emptyMongo() {
+async function emptyMongo() {
   console.log("Empty MondoDb");
 
   documentDAO.gameCollection.drop().then(() => {
-    return documentDAO;
+    documentDAO.streamerCollection.drop().then(() => {
+      return documentDAO;
+    })
   });
 }
 
@@ -112,6 +114,10 @@ async function loadGames() {
   return await documentDAO.getAllGames();
 }
 
+async function selectTwitchGames(){
+
+}
+
 function calculateGenreAndPlatForms(games) {
   // Retrieve all genres and platforms from all games, split them and assign a numeric id
   console.log('Calculating genres and platforms');
@@ -162,23 +168,28 @@ function addData() {
         let data = calculateGenreAndPlatForms(games);
         let genres = data.genres;
         let platforms = data.platforms;
-        insertInNeo4j(games, genres, platforms);
-        loadGamesFromTwitch();
+        // insertInNeo4j(games, genres, platforms);
+        loadGamesFromTwitch().then();
       });
     });
   });
 }
 
-function loadGamesFromTwitch() {
-  twitch_API.getTopGames(100).then((results) => {
-    let twitchGames = results.data;
+async function loadGamesFromTwitch() {
+  let twitchGames = await twitch_API.getTopGames(500);
+  let nb_found_games = 0;
     twitchGames.forEach((twitchGame) => {
-      documentDAO.getGames(twitchGame.name).then((gamesFound) => {
+      documentDAO.getStrictGames(twitchGame.name).then((gamesFound) => {
         if(gamesFound.length > 0){
-          console.log(gamesFound[0]);
+          nb_found_games++;
+          if(nb_found_games % 10 == 0){
+            console.log(nb_found_games);
+          }
+          // console.log("Games found for " + twitchGame.name);
+          // console.log(gamesFound);
           twitchGame.getStreams().then((streams) => {
             streams.data.forEach((stream) => {
-              console.log(stream.userDisplayName + " : " + stream.title);
+              // console.log(stream.userDisplayName + " : " + stream.title);
              stream.getUser().then((streamer) => {
                documentDAO.insertStreamer({
                  displayName: streamer.displayName,
@@ -192,7 +203,6 @@ function loadGamesFromTwitch() {
         }
       })
     })
-  })
 }
 
 // MAIN
@@ -200,14 +210,15 @@ function loadGamesFromTwitch() {
 console.log('Starting mongo');
 documentDAO.init().then(() => {
 
-  emptyMongo();
-  console.log('Preparing Neo4j');
-  graphDAO.prepare().then(() => {
+  emptyMongo().then(() => {
+    console.log('Preparing Neo4j');
+    graphDAO.prepare().then(() => {
 
-    emptyNeo4j().then(() => {
-      addData();
+      emptyNeo4j().then(() => {
+        addData();
 
-       // TODO Fix end of program
+        // TODO Fix end of program
+      });
     });
   });
 });

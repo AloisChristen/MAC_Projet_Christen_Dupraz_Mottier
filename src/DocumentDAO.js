@@ -47,6 +47,20 @@ class DocumentDAO {
     ]).toArray();
   }
 
+  getStrictGames(search) {
+    let reg = "^" + search + "$";
+    return this.gameCollection.aggregate([
+      { $match: { 'name': new RegExp(reg, 'gi') }},
+      { $limit: 10},
+      { $group: { _id: "$name",
+          platform: {$addToSet: "$platform"},
+          _year: { $min: "$year"},
+          genres: {$addToSet: "$genre"}
+        }},
+      { $limit: 10}
+    ]).toArray();
+  }
+
   getGameById(id) {
     return this.gameCollection.findOne({ _id: id });
   }
