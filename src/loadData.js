@@ -194,18 +194,8 @@ async function loadFakeRelationGameStreamer(){
 
 async function loadStreamerFromGame(game){
   let twitchGame = await twitch_API.getGame(game);
-  // let videos = await twitch_API.getVideos(game);
-  // videos.forEach((video) => {
-  //   documentDAO.insertStreamer({
-  //     displayName: video.displayName,
-  //     name: video.name,
-  //     _id: video.id,
-  //     language: video.language,
-  //   });
-  // });
   let streams = await twitchGame.getStreams();
   streams.data.forEach((stream) => {
-    // console.log(stream.userDisplayName + " : " + stream.title);
     stream.getUser().then((streamer) => {
       documentDAO.insertStreamer({
         displayName: streamer.displayName,
@@ -213,49 +203,9 @@ async function loadStreamerFromGame(game){
         _id: streamer.id,
         language: streamer.language,
       });
-     // graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => console.log("Streamer : " + streamer.name + " loaded in Neo4j"));
+     graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => {});
     });
-
   });
-}
-
-// })
-
-async function loadGamesFromTwitch() {
-  let twitchGames = await twitch_API.getTopGames(1000);
-  let nb_found_games = 0;
-  twitchGames.forEach((twitchGame) => {
-    documentDAO.getStrictGames(twitchGame.name).then((gamesFound) => {
-      if(gamesFound.length > 0){
-        nb_found_games++;
-        if(nb_found_games % 10 === 0){
-          console.log(nb_found_games);
-        }
-      }
-
-    })
-  })
-}
-
-async function writeCSV(games){
-  let columnsName = ["id", "basename", "name", "year", "platform", "genres", "critic_score", "user_score"];
-  let csvContent = "";
-  games = games.map((g) => {
-    let platforms = "\"" + g.games.platforms.join(",") + "\"";
-    let genres = "\"" + g.games.genres.join(",") + "\"";
-    return [
-      g.twitchId, g.games.basename, g.twichName,
-      g.games.year, platforms, genres,
-      g.games.critic_score, g.games.user_score];
-  });
-  csvContent += columnsName.join(",") + "\r\n";
-  games.forEach(function(rowArray) {
-    let row = rowArray.join(",");
-    csvContent += row + "\r\n";
-  });
-  console.log(csvContent);
-  await fs.writeFile(join(__dirname, "../data/twitch_games.csv"), csvContent, 'utf8')
-      .catch(err => {console.log(err.message);});
 }
 
 // MAIN
