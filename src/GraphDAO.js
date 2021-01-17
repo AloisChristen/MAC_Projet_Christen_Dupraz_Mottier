@@ -84,6 +84,17 @@ class GraphDAO {
     });
   }
 
+  upsertFakeRelationGameStreamer(streamerId, gameId){
+    return this.run(`
+      MATCH (g:Game{ id: $gameId })
+      MATCH (s:Streamer{id: $streamerId})
+      MERGE (s)-[r:PLAYS_TO]->(g)
+      `, {
+      gameId,
+      streamerId
+    });
+  }
+
   upsertPlatform(gameId, platform) {
     return this.run(`
       MATCH (m:Game{ id: $gameId })

@@ -202,6 +202,7 @@ async function addData() {
   //sloadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
   //await selectTwitchGames(5).then(()=> {console.log("finish selecting")});
   await loadStreamerFromGames(games.slice(1,50));
+  await loadFakeRelationGameStreamer();
 }
 
 async function selectTwitchGames(nb) {
@@ -229,6 +230,13 @@ async function selectTwitchGames(nb) {
 }
 async function loadStreamerFromGames(games){
   games.forEach((game) => loadStreamerFromGame(game));
+}
+
+async function loadFakeRelationGameStreamer(){
+  documentDAO.getAllStreamers().then((steamer) => {
+    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
+  });
+
 }
 
 async function loadStreamerFromGame(game){
