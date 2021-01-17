@@ -68,7 +68,20 @@ class GraphDAO {
     return this.run('MERGE (m:Game{id: $gameId}) ON CREATE SET m.basename = $gameTitle RETURN m', {
       gameId,
       gameTitle,
-    })
+    });
+  }
+
+  upsertStreamer(streamerId, streamerName, gameId){
+    return this.run(`
+      MATCH (g:Game{ id: $gameId })
+      MERGE (s:Streamer{id: $streamerId})
+      ON CREATE SET s.name = $streamerName
+      MERGE (s)-[r:PLAYS_TO]->(g)
+      `, {
+      gameId,
+      streamerId,
+      streamerName,
+    });
   }
 
   upsertPlatform(gameId, platform) {
