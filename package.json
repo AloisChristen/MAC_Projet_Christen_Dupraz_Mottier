@@ -2,6 +2,7 @@
   "scripts": {
     "start": "node src/index.js",
     "import": "node src/loadData.js",
+    "create-data" : "node src/createData.js",
     "ts-start": "ts-node ts-src/index.ts",
     "ts-import": "ts-node ts-src/loadData.ts"
   },

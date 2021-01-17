@@ -8,6 +8,9 @@ const DocumentDAO = require('./DocumentDAO');
 const GraphDAO = require('./GraphDAO');
 const Twitch_API = require('./twitch_API');
 
+const twitchGamesCSV = join(__dirname, '../data/twitch_games.csv');
+
+
 dotenv.config();
 
 const buildUser = (id, username, first_name, last_name, language_code, is_bot) => ({
@@ -31,8 +34,8 @@ const shuffle = (array) => {
   return array;
 };
 
-const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/twitch_games.csv')).then((baseGames) => {
+const parseCSV = (csvPath) => new Promise((resolve) => {
+  fs.readFile(csvPath).then((baseGames) => {
     parse(baseGames, (err, data) => {
       if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
@@ -63,53 +66,27 @@ async function emptyMongo() {
   }
 }
 
-function emptyNeo4j() {
+async function emptyNeo4j() {
   console.log("Empty Neo4j");
-  return graphDAO.run("match (a) -[r] -> () delete a, r")
-      .then(() => { graphDAO.run("MATCH (a) delete a"); });
+  await graphDAO.run("match (a) -[r] -> () delete a, r");
+  await graphDAO.run("MATCH (a) delete a");
 }
 
-function writeUsers() {
+async function writeUsers() {
   console.log('Writing users to neo4j');
-  return Promise.all(users.map((user) => graphDAO.upsertUser(user)));
+  await Promise.all(users.map((user) => graphDAO.upsertUser(user)));
 }
-
 
 async function parseGame() {
   console.log('Parsing CSV');
-  const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  let parsedGames = await parseGames();
+  let parsedGames = await parseCSV(twitchGamesCSV);
   console.log("Writing games to mongo");
-  parseGamesBar.start(parsedGames.length, 9);
-  // games_old.csv format
-  /*/
-  return Promise.all(parsedGames.slice(1).map((it) => {
-    const [
-      basename,
-      name,
-      genre,
-      platform,
-      publisher,
-      developer,
-      critic_score,
-      user_score,
-      year
-    ] = it;
-    documentDAO.insertGame({
-      basename,
-      name,
-      genre,
-      platform,
-      publisher,
-      developer,
-      critic_score,
-      user_score,
-      year
-    }).then(() => parseGamesBar.increment());
+  const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  parseGamesBar.start(parsedGames.length, 0);
+
+  // twitch games CSV format
   /**/
-  // twitch selected games CSV format
-  /**/
-  return Promise.all(parsedGames.slice(1).map((it) => {
+  await Promise.all(parsedGames.slice(1).map((it) => {
     const [
       _id,
       basename,
@@ -192,6 +169,7 @@ function insertInNeo4j(games, genres, platforms){
 async function addData() {
   await writeUsers();
   await parseGame();
+  // parseStreamer();
   let games = await loadGames();
   let data = calculateGenreAndPlatForms(games);
   let genres = data.genres;
@@ -199,84 +177,7 @@ async function addData() {
   let platforms = data.platforms;
   console.log("Platforms : " + platforms);
   await insertInNeo4j(games, genres, platforms);
-  // await loadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
-  // await selectTwitchGames(5).then(()=> {console.log("finish selecting")});
-}
-
-async function selectTwitchGames(nb) {
-  let selectedGames = [];
-  for (; selectedGames.length < nb;) {
-    let nextBatch = await twitch_API.getNextGames();
-    for (const twitchGame of nextBatch) {
-      let gamesFound = await documentDAO.getStrictGames(twitchGame.name);
-      if (gamesFound.length == 1) {
-        let selected = {
-          games: gamesFound[0],
-          twichName: twitchGame.name,
-          twitchId : twitchGame.id
-        }
-        if (selectedGames.find(sel => sel.twitchId === selected.twitchId) === undefined){
-          selectedGames.push(selected);
-          if (selectedGames.length % 10 === 0) {
-            console.log(selectedGames.length);
-          }
-        }
-      }
-    }
-  }
-  return selectedGames;
-}
-
-async function loadGamesFromTwitch() {
-  let twitchGames = await twitch_API.getTopGames(1000);
-  let nb_found_games = 0;
-    twitchGames.forEach((twitchGame) => {
-      documentDAO.getStrictGames(twitchGame.name).then((gamesFound) => {
-        if(gamesFound.length > 0){
-          nb_found_games++;
-          if(nb_found_games % 10 === 0){
-            console.log(nb_found_games);
-          }
-          // console.log("Games found for " + twitchGame.name);
-          // console.log(gamesFound);
-          // twitchGame.getStreams().then((streams) => {
-          //   streams.data.forEach((stream) => {
-          //     // console.log(stream.userDisplayName + " : " + stream.title);
-          //    stream.getUser().then((streamer) => {
-          //      documentDAO.insertStreamer({
-          //        displayName: streamer.displayName,
-          //        name: streamer.name,
-          //        _id: streamer.id,
-          //        language: stream.language,
-          //      });
-          //    });
-          //   })
-          // })
-        }
-
-      })
-    })
-}
-
-async function writeCSV(games){
-  let columnsName = ["id", "basename", "name", "year", "platform", "genres", "critic_score", "user_score"];
-  let csvContent = "";
-  games = games.map((g) => {
-    let platforms = "\"" + g.games.platforms.join(",") + "\"";
-    let genres = "\"" + g.games.genres.join(",") + "\"";
-    return [
-        g.twitchId, g.games.basename, g.twichName,
-        g.games.year, platforms, genres,
-        g.games.critic_score, g.games.user_score];
-  });
-  csvContent += columnsName.join(",") + "\r\n";
-  games.forEach(function(rowArray) {
-    let row = rowArray.join(",");
-    csvContent += row + "\r\n";
-  });
-  console.log(csvContent);
-  await fs.writeFile(join(__dirname, "../data/twitch_games.csv"), csvContent, 'utf8')
-      .catch(err => {console.log(err.message);});
+  // Insert streamerInNeo4j();
 }
 
 // MAIN
@@ -288,8 +189,6 @@ async function main() {
   await graphDAO.prepare();
   await emptyNeo4j();
   await addData();
-  // let selection = await selectTwitchGames(500);
-  // await writeCSV(selection);
 }
 
 main().then(() => {
