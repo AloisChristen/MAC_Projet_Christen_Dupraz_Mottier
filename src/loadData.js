@@ -8,6 +8,9 @@ const DocumentDAO = require('./DocumentDAO');
 const GraphDAO = require('./GraphDAO');
 const Twitch_API = require('./twitch_API');
 
+const twitchGamesCSV = join(__dirname, '../data/twitch_games.csv');
+
+
 dotenv.config();
 
 const buildUser = (id, username, first_name, last_name, language_code, is_bot) => ({
@@ -31,8 +34,8 @@ const shuffle = (array) => {
   return array;
 };
 
-const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/twitch_games.csv')).then((baseGames) => {
+const parseCSV = (csvPath) => new Promise((resolve) => {
+  fs.readFile(csvPath).then((baseGames) => {
     parse(baseGames, (err, data) => {
       if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
@@ -63,53 +66,27 @@ async function emptyMongo() {
   }
 }
 
-function emptyNeo4j() {
+async function emptyNeo4j() {
   console.log("Empty Neo4j");
-  return graphDAO.run("match (a) -[r] -> () delete a, r")
-      .then(() => { graphDAO.run("MATCH (a) delete a"); });
+  await graphDAO.run("match (a) -[r] -> () delete a, r");
+  await graphDAO.run("MATCH (a) delete a");
 }
 
-function writeUsers() {
+async function writeUsers() {
   console.log('Writing users to neo4j');
-  return Promise.all(users.map((user) => graphDAO.upsertUser(user)));
+  await Promise.all(users.map((user) => graphDAO.upsertUser(user)));
 }
-
 
 async function parseGame() {
   console.log('Parsing CSV');
-  const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  let parsedGames = await parseGames();
+  let parsedGames = await parseCSV(twitchGamesCSV);
   console.log("Writing games to mongo");
-  parseGamesBar.start(parsedGames.length, 9);
-  // games_old.csv format
-  /*/
-  return Promise.all(parsedGames.slice(1).map((it) => {
-    const [
-      basename,
-      name,
-      genre,
-      platform,
-      publisher,
-      developer,
-      critic_score,
-      user_score,
-      year
-    ] = it;
-    documentDAO.insertGame({
-      basename,
-      name,
-      genre,
-      platform,
-      publisher,
-      developer,
-      critic_score,
-      user_score,
-      year
-    }).then(() => parseGamesBar.increment());
+  const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  parseGamesBar.start(parsedGames.length, 0);
+
+  // twitch games CSV format
   /**/
-  // twitch selected games CSV format
-  /**/
-  return Promise.all(parsedGames.slice(1).map((it) => {
+  await Promise.all(parsedGames.slice(1).map((it) => {
     const [
       _id,
       basename,
@@ -199,41 +176,17 @@ async function addData() {
   let platforms = data.platforms;
   console.log("Platforms : " + platforms);
   await insertInNeo4j(games, genres, platforms);
-  //sloadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
-  //await selectTwitchGames(5).then(()=> {console.log("finish selecting")});
   await loadStreamerFromGames(games.slice(1,50));
   await loadFakeRelationGameStreamer();
 }
 
-async function selectTwitchGames(nb) {
-  let selectedGames = [];
-  for (; selectedGames.length < nb;) {
-    let nextBatch = await twitch_API.getNextGames();
-    for (const twitchGame of nextBatch) {
-      let gamesFound = await documentDAO.getStrictGames(twitchGame.name);
-      if (gamesFound.length == 1) {
-        let selected = {
-          games: gamesFound[0],
-          twichName: twitchGame.name,
-          twitchId : twitchGame.id
-        }
-        if (selectedGames.find(sel => sel.twitchId === selected.twitchId) === undefined){
-          selectedGames.push(selected);
-          if (selectedGames.length % 10 === 0) {
-            console.log(selectedGames.length);
-          }
-        }
-      }
-    }
-  }
-  return selectedGames;
-}
+
 async function loadStreamerFromGames(games){
   games.forEach((game) => loadStreamerFromGame(game));
 }
 
 async function loadFakeRelationGameStreamer(){
-  documentDAO.getAllStreamers().then((steamer) => {
+  documentDAO.getAllStreamers().then((streamer) => {
     documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
   });
 
@@ -314,9 +267,6 @@ async function main() {
   await graphDAO.prepare();
   await emptyNeo4j();
   await addData();
-  //let selection = await selectTwitchGames(500);
-  //await writeCSV(selection);
-
 }
 
 main().then(() => {
