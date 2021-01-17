@@ -49,23 +49,6 @@ bot.on('inline_query', (ctx) => {
           `
         },
       }));
-      /*const game = games[0];
-      console.log(game);
-      const streams = twitch.getStreamers(game._id).then((str) => {
-      const answer = [{
-        id: game._id,
-        type: 'article',
-        title: game._id,
-        description: game.description,
-        reply_markup: buildLikeKeyboard(game._id),
-        input_message_content: {
-          message_text: stripMargin`
-            |Title: ${game._id}
-            |Year: ${game._year}
-            |Platforms : ${game.platforms}
-            |Genres: ${game.genres}
-          `
-      }}];*/
       ctx.answerInlineQuery(answer);
     });
   }
@@ -79,23 +62,6 @@ bot.on('chosen_inline_result', (ctx) => {
       if (liked !== null) {
         ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, liked));
       }
-      console.log("from " + ctx.chosenInlineResult.result_id);
-      const streams = twitch.getStreamers(ctx.chosenInlineResult.result_id).then((streams) => {
-        const streamDisplay = streams.slice(0, 11).map(stream => ({
-          user: stream.userDisplayName,
-          title: stream.title,
-          url: stream.thumbNailUrl,
-          reply_markup: buildLikeKeyboard(stream.title),
-          input_message_content: {
-            message_text: stripMargin`
-              |User: ${stream.userDisplayName}
-              |Title: ${stream.title}
-              |Url: ${stream.thumbNailUrl}
-            `}
-        }));
-        console.log("stream display " + streamDisplay);
-        //ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, streamDisplay));
-      });
     })
   }
 });
@@ -130,7 +96,7 @@ A user can display a game and set a reaction to this game (like, dislike).
 When asked, the bot will provide a recommendation based on the games he liked or disliked.
 
 Use inline queries to display a game, then use the inline keyboard of the resulting message to react.
-Use the command /recommendactor to get a personalized recommendation.
+Use the command /recommendstreamer to get a personalized recommendation.
   `);
 });
 
@@ -138,8 +104,35 @@ bot.command('start', (ctx) => {
   ctx.reply('HEIG-VD Mac project bot in javascript');
 });
 
-bot.command('recommendactor', (ctx) => {
-  console.log("recommand actor");
+bot.command('recommendstreamer', (ctx) => {
+  twitch.getStreamers("Apex Legends").then((streams) => {
+    async function getUser(streams) {
+      let streamDisplay = [];
+      for await (let stream of streams.slice(0, 6)) {
+        let userName = await stream.getUser().then((u) => u.name);
+        streamDisplay.push({
+          id: stream.userId,
+          title: stream.title,
+          url: "https://www.twitch.tv/" + userName,
+          reply_markup: buildLikeKeyboard(stream.title),
+          input_message_content: {
+            message_text: stripMargin`
+              |User: ${stream.userDisplayName}
+              |Title: ${stream.title}
+              |Url: ${"https://www.twitch.tv/" + userName}
+            `}
+        });
+      }
+      return streamDisplay;
+    }
+
+    getUser(streams).then((streamDisplay) => {
+      for (var current in streamDisplay) {
+        ctx.reply(streamDisplay[current].input_message_content.message_text);
+        //ctx.editMessageReplyMarkup(buildLikeKeyboard(streamDisplay[current].title));
+      }
+    });
+  });
   /*if (!ctx.from || !ctx.from.id) {
     ctx.reply('We cannot guess who you are');
   } else {
