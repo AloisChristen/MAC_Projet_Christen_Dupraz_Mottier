@@ -16,6 +16,14 @@ class twitch_API {
         this.resetPagination();
     }
 
+    async getVideos(game = null){
+        return this.apiClient.kraken.videos.getTopVideos(game);
+    }
+
+    async getGame(game){
+        return this.apiClient.helix.games.getGameByName(game.name);
+    }
+
     async getTopGames(number = 10){
         //TODO return more games
         this.resetPagination();
