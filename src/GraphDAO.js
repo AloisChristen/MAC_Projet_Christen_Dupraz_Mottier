@@ -7,12 +7,9 @@ class GraphDAO {
     this.driver = neo4j.driver(`bolt://${process.env.GRAPHDB_HOST}`, neo4j.auth.basic('neo4j', process.env.GRAPHDB_PASSWORD));
   }
 
-  prepare() {
-    return new Promise((resolve) => {
-      this.run("CREATE CONSTRAINT ON (n:Game) ASSERT n.id IS UNIQUE", {}).then(() => {
-        this.run("CREATE CONSTRAINT ON (u:User) ASSERT u.id IS UNIQUE", {}).then(() => resolve());
-      });
-    });
+  async prepare() {
+    await this.run("CREATE CONSTRAINT ON (n:Game) ASSERT n.id IS UNIQUE", {});
+    await  this.run("CREATE CONSTRAINT ON (u:User) ASSERT u.id IS UNIQUE", {});
   }
 
   close() {

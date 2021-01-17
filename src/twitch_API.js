@@ -1,6 +1,9 @@
 const ApiClient = require('twitch');
 const ClientCredentialsAuthProvider =  require('twitch-auth');
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 
 class twitch_API {
@@ -10,13 +13,14 @@ class twitch_API {
         const clientSecret = process.env.TWITCH_CLIENT_SECRET;
         const authProvider = new ClientCredentialsAuthProvider.ClientCredentialsAuthProvider(clientId, clientSecret);
         this.apiClient = new ApiClient({ authProvider });
+        this.resetPagination();
     }
 
     async getTopGames(number = 10){
         //TODO return more games
-        let paginator = this.apiClient.helix.games.getTopGamesPaginated();
+        this.resetPagination();
         let top_games = [];
-        for await (const games of paginator){
+        for await (const games of this.paginator){
             console.log("Number of fetched games : " + top_games.length);
             top_games = top_games.concat(games);
             if(top_games.length > number){
@@ -29,8 +33,18 @@ class twitch_API {
         // return this.apiClient.helix.games.getTopGames(paginator);
     }
 
+    resetPagination(){
+        this.paginator = this.apiClient.helix.games.getTopGamesPaginated();
+    }
 
+    async getNextGames(){
+        await sleep(500);
+        return this.paginator.getNext();
+    }
 }
+
+
+
 
 module.exports = twitch_API;
 

@@ -8,8 +8,8 @@ class DocumentDAO {
     this.gameCollection = null;
   }
 
-  init() {
-    return new Promise((resolve) => {
+  async init() {
+    let connection =  new Promise((resolve) => {
       MongoClient.connect(`mongodb://root:toor@${process.env.DOCUMENTDB_HOST}/?authSource=admin`, (err, client) => {
         if (err !== null) throw err;
         this.client = client;
@@ -18,6 +18,9 @@ class DocumentDAO {
         this.streamerCollection = this.db.collection('streamers');
         resolve(null);
       });
+    });
+    await connection.catch(err => {
+      console.log("documentDao.init err : " + err.message);
     });
   }
 
@@ -47,16 +50,22 @@ class DocumentDAO {
     ]).toArray();
   }
 
-  getStrictGames(search) {
+  async getStrictGames(search) {
     let reg = "^" + search + "$";
     return this.gameCollection.aggregate([
       { $match: { 'name': new RegExp(reg, 'gi') }},
       { $limit: 10},
-      { $group: { _id: "$name",
-          platform: {$addToSet: "$platform"},
-          _year: { $min: "$year"},
-          genres: {$addToSet: "$genre"}
-        }},
+      { $group: {
+          _id: "$basename",
+          basename: {$first: "$basename"},
+          name: {$first : "$name"},
+          platforms: {$addToSet: "$platform"},
+          year: { $min: "$year"},
+          genres: {$addToSet: "$genre"},
+          critic_score: { $max: "$critic_score"},
+          user_score: {$max: "$user_score"}
+        }
+      },
       { $limit: 10}
     ]).toArray();
   }

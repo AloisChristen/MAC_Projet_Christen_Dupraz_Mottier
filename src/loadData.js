@@ -32,7 +32,7 @@ const shuffle = (array) => {
 };
 
 const parseGames = () => new Promise((resolve) => {
-  fs.readFile(join(__dirname, '../data/games_old.csv')).then((baseGames) => {
+  fs.readFile(join(__dirname, '../data/twitch_games.csv')).then((baseGames) => {
     parse(baseGames, (err, data) => {
       if (err !== undefined) console.log("Errors while parsing : " + err);
       resolve(data);
@@ -56,11 +56,11 @@ const twitch_API = new Twitch_API();
 async function emptyMongo() {
   console.log("Empty MondoDb");
 
-  documentDAO.gameCollection.drop().then(() => {
-    documentDAO.streamerCollection.drop().then(() => {
-      return documentDAO;
-    })
-  });
+  let collections = await documentDAO.db.listCollections().toArray();
+  for await (const collection of collections){
+    console.log("Dropping " + collection.name);
+    documentDAO.db.dropCollection(collection.name);
+  }
 }
 
 function emptyNeo4j() {
@@ -74,12 +74,15 @@ function writeUsers() {
   return Promise.all(users.map((user) => graphDAO.upsertUser(user)));
 }
 
+
 async function parseGame() {
   console.log('Parsing CSV');
   const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   let parsedGames = await parseGames();
   console.log("Writing games to mongo");
   parseGamesBar.start(parsedGames.length, 9);
+  // games_old.csv format
+  /*/
   return Promise.all(parsedGames.slice(1).map((it) => {
     const [
       basename,
@@ -103,6 +106,31 @@ async function parseGame() {
       user_score,
       year
     }).then(() => parseGamesBar.increment());
+  /**/
+  // twitch selected games CSV format
+  /**/
+  return Promise.all(parsedGames.slice(1).map((it) => {
+    const [
+      _id,
+      basename,
+      name,
+      year,
+      platforms,
+      genres,
+      critic_score,
+      user_score
+    ] = it;
+    documentDAO.insertGame({
+      _id,
+      basename,
+      name,
+      year,
+      platforms,
+      genres,
+      critic_score,
+      user_score
+     }).then(() => parseGamesBar.increment());
+    /**/
   })).then(() => {
     parseGamesBar.stop();
   });
@@ -114,16 +142,16 @@ async function loadGames() {
   return await documentDAO.getAllGames();
 }
 
-async function selectTwitchGames(){
-
-}
 
 function calculateGenreAndPlatForms(games) {
   // Retrieve all genres and platforms from all games, split them and assign a numeric id
   console.log('Calculating genres and platforms');
-  const genres = [... new Set(games.flatMap((it) => it.genre.trim()))].map((it, i) => [i,it]);
-  const platforms = [...new Set(games.flatMap((it) =>
-      it.platform.split(',').map(it => it.trim())))].map((it, i) => [i, it]);
+  function splitAndGroup(objList, property){
+    return [... new Set(objList.flatMap((it) =>
+        it[property].split(',').map(it => it.trim())))].map((it, i) => [i,it]);
+  }
+  const genres = splitAndGroup(games, "genres");
+  const platforms = splitAndGroup(games, "platforms");
   return {
     genres: genres,
     platforms: platforms
@@ -135,8 +163,8 @@ function insertInNeo4j(games, genres, platforms){
   const gamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   gamesBar.start(games.length, 0);
   Promise.all(games.map((game) => new Promise((resolve1) => {
-    const gameGenres = game.genre.split(',').map(i => i.trim());
-    const gamePlatforms = game.platform.split(',').map(i => i.trim());
+    const gameGenres = game.genres.split(',').map(i => i.trim());
+    const gamePlatforms = game.platforms.split(',').map(i => i.trim());
     graphDAO.upsertGame(game._id, game.basename).then(() => {
 
       // Update platform <-> game links
@@ -161,18 +189,42 @@ function insertInNeo4j(games, genres, platforms){
   });
 }
 
-function addData() {
-  writeUsers().then(() => {
-    parseGame().then(() => {
-      loadGames().then((games) => {
-        let data = calculateGenreAndPlatForms(games);
-        let genres = data.genres;
-        let platforms = data.platforms;
-        // insertInNeo4j(games, genres, platforms);
-        loadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
-      });
-    });
-  });
+async function addData() {
+  await writeUsers();
+  await parseGame();
+  let games = await loadGames();
+  let data = calculateGenreAndPlatForms(games);
+  let genres = data.genres;
+  console.log("Genres : " + genres);
+  let platforms = data.platforms;
+  console.log("Platforms : " + platforms);
+  await insertInNeo4j(games, genres, platforms);
+  // await loadGamesFromTwitch().then(() => console.log("Finish loading games from Twitch"));
+  // await selectTwitchGames(5).then(()=> {console.log("finish selecting")});
+}
+
+async function selectTwitchGames(nb) {
+  let selectedGames = [];
+  for (; selectedGames.length < nb;) {
+    let nextBatch = await twitch_API.getNextGames();
+    for (const twitchGame of nextBatch) {
+      let gamesFound = await documentDAO.getStrictGames(twitchGame.name);
+      if (gamesFound.length == 1) {
+        let selected = {
+          games: gamesFound[0],
+          twichName: twitchGame.name,
+          twitchId : twitchGame.id
+        }
+        if (selectedGames.find(sel => sel.twitchId === selected.twitchId) === undefined){
+          selectedGames.push(selected);
+          if (selectedGames.length % 10 === 0) {
+            console.log(selectedGames.length);
+          }
+        }
+      }
+    }
+  }
+  return selectedGames;
 }
 
 async function loadGamesFromTwitch() {
@@ -206,23 +258,44 @@ async function loadGamesFromTwitch() {
     })
 }
 
-// MAIN
-
-console.log('Starting mongo');
-documentDAO.init().then(() => {
-
-  emptyMongo().then(() => {
-    console.log('Preparing Neo4j');
-    graphDAO.prepare().then(() => {
-
-      emptyNeo4j().then(() => {
-        addData();
-
-        // TODO Fix end of program
-      });
-    });
+async function writeCSV(games){
+  let columnsName = ["id", "basename", "name", "year", "platform", "genres", "critic_score", "user_score"];
+  let csvContent = "";
+  games = games.map((g) => {
+    let platforms = "\"" + g.games.platforms.join(",") + "\"";
+    let genres = "\"" + g.games.genres.join(",") + "\"";
+    return [
+        g.twitchId, g.games.basename, g.twichName,
+        g.games.year, platforms, genres,
+        g.games.critic_score, g.games.user_score];
   });
+  csvContent += columnsName.join(",") + "\r\n";
+  games.forEach(function(rowArray) {
+    let row = rowArray.join(",");
+    csvContent += row + "\r\n";
+  });
+  console.log(csvContent);
+  await fs.writeFile(join(__dirname, "../data/twitch_games.csv"), csvContent, 'utf8')
+      .catch(err => {console.log(err.message);});
+}
+
+// MAIN
+async function main() {
+  console.log('Starting mongo');
+  await documentDAO.init();
+  await emptyMongo();
+  console.log('Preparing Neo4j');
+  await graphDAO.prepare();
+  await emptyNeo4j();
+  await addData();
+  // let selection = await selectTwitchGames(500);
+  // await writeCSV(selection);
+}
+
+main().then(() => {
+  console.log("End");
 });
+
 
 
 
