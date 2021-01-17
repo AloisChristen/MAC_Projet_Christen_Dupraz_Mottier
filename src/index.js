@@ -105,7 +105,7 @@ bot.command('start', (ctx) => {
 });
 
 bot.command('recommendstreamer', (ctx) => {
-  twitch.getStreamers("Apex Legends").then((streams) => {
+  twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
     async function getUser(streams) {
       let streamDisplay = [];
       for await (let stream of streams.slice(0, 6)) {
@@ -125,7 +125,6 @@ bot.command('recommendstreamer', (ctx) => {
       }
       return streamDisplay;
     }
-
     getUser(streams).then((streamDisplay) => {
       for (var current in streamDisplay) {
         ctx.reply(streamDisplay[current].input_message_content.message_text);
