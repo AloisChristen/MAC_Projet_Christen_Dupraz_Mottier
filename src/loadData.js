@@ -106,7 +106,7 @@ async function parseGame() {
       genres,
       critic_score,
       user_score
-     }).then(() => parseGamesBar.increment());
+    }).then(() => parseGamesBar.increment());
     /**/
   })).then(() => {
     parseGamesBar.stop();
@@ -160,16 +160,15 @@ function insertInNeo4j(games, genres, platforms){
       });
     });
   }).then(() => {
-  gamesBar.stop();
-}))).then(() => {
-  console.log("Data loaded");
+    gamesBar.stop();
+  }))).then(() => {
+    console.log("Data loaded");
   });
 }
 
 async function addData() {
   await writeUsers();
   await parseGame();
-  // parseStreamer();
   let games = await loadGames();
   let data = calculateGenreAndPlatForms(games);
   let genres = data.genres;
@@ -177,7 +176,86 @@ async function addData() {
   let platforms = data.platforms;
   console.log("Platforms : " + platforms);
   await insertInNeo4j(games, genres, platforms);
-  // Insert streamerInNeo4j();
+  await loadStreamerFromGames(games.slice(1,50));
+  await loadFakeRelationGameStreamer();
+}
+
+
+async function loadStreamerFromGames(games){
+  games.forEach((game) => loadStreamerFromGame(game));
+}
+
+async function loadFakeRelationGameStreamer(){
+  documentDAO.getAllStreamers().then((steamer) => {
+    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
+  });
+
+}
+
+async function loadStreamerFromGame(game){
+  let twitchGame = await twitch_API.getGame(game);
+  // let videos = await twitch_API.getVideos(game);
+  // videos.forEach((video) => {
+  //   documentDAO.insertStreamer({
+  //     displayName: video.displayName,
+  //     name: video.name,
+  //     _id: video.id,
+  //     language: video.language,
+  //   });
+  // });
+  let streams = await twitchGame.getStreams();
+  streams.data.forEach((stream) => {
+    // console.log(stream.userDisplayName + " : " + stream.title);
+    stream.getUser().then((streamer) => {
+      documentDAO.insertStreamer({
+        displayName: streamer.displayName,
+        name: streamer.name,
+        _id: streamer.id,
+        language: streamer.language,
+      });
+     // graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => console.log("Streamer : " + streamer.name + " loaded in Neo4j"));
+    });
+
+  });
+}
+
+// })
+
+async function loadGamesFromTwitch() {
+  let twitchGames = await twitch_API.getTopGames(1000);
+  let nb_found_games = 0;
+  twitchGames.forEach((twitchGame) => {
+    documentDAO.getStrictGames(twitchGame.name).then((gamesFound) => {
+      if(gamesFound.length > 0){
+        nb_found_games++;
+        if(nb_found_games % 10 === 0){
+          console.log(nb_found_games);
+        }
+      }
+
+    })
+  })
+}
+
+async function writeCSV(games){
+  let columnsName = ["id", "basename", "name", "year", "platform", "genres", "critic_score", "user_score"];
+  let csvContent = "";
+  games = games.map((g) => {
+    let platforms = "\"" + g.games.platforms.join(",") + "\"";
+    let genres = "\"" + g.games.genres.join(",") + "\"";
+    return [
+      g.twitchId, g.games.basename, g.twichName,
+      g.games.year, platforms, genres,
+      g.games.critic_score, g.games.user_score];
+  });
+  csvContent += columnsName.join(",") + "\r\n";
+  games.forEach(function(rowArray) {
+    let row = rowArray.join(",");
+    csvContent += row + "\r\n";
+  });
+  console.log(csvContent);
+  await fs.writeFile(join(__dirname, "../data/twitch_games.csv"), csvContent, 'utf8')
+      .catch(err => {console.log(err.message);});
 }
 
 // MAIN
@@ -202,74 +280,74 @@ main().then(() => {
 
 
 
-            //
-            //   // Add some films added by users
-            //   console.log('Add some films liked by users');
-            //   const addedPromise = [400, 87, 0, 34, 58].flatMap((quantity, index) => {
-            //     return shuffle(games).slice(0, quantity).map((game) => {
-            //       return graphDAO.upsertAdded(users[index].id, game._id, {
-            //         at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            //       });
-            //     });
-            //   });
-            //   Promise.all(addedPromise).then(() => {
-            //
-            //     // Add some games liked by users
-            //     console.log('Add some games liked by users');
-            //     const likePromise = [280, 34, 98, 254, 0].flatMap((quantity, index) => {
-            //       return shuffle(games).slice(0, quantity).map((game) => {
-            //         return graphDAO.upsertGameLiked(users[index], game._id, {
-            //           rank: Math.floor(Math.random() * 5) + 1,
-            //           at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            //         });
-            //       });
-            //     });
-            //     Promise.all(likePromise).then(() => {
-            //
-            //       // Add some actors liked by users
-            //       console.log('Add some actors liked by users');
-            //       const actorsPromise = [300, 674, 0, 45, 36].flatMap((quantity, index) => {
-            //         return shuffle(actors).slice(0, quantity).map(([actorId]) => {
-            //           return graphDAO.upsertActorLiked(users[index].id, actorId, {
-            //             rank: Math.floor(Math.random() * 5) + 1,
-            //             at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            //           });
-            //         });
-            //       });
-            //       Promise.all(actorsPromise).then(() => {
-            //         // Add some genres liked by users
-            //         console.log('Add some genres liked by users');
-            //         const genrePromise = [22, 3, 0, 4, 7].flatMap((quantity, index) => {
-            //           return shuffle(genres).slice(0, quantity).map(([genreId, actor]) => {
-            //             return graphDAO.upsertGenreLiked(users[index].id, genreId, {
-            //               rank: Math.floor(Math.random() * 5) + 1,
-            //               at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            //             });
-            //           });
-            //         });
-            //         Promise.all(genrePromise).then(() => {
-            //           // Add some games requested
-            //           console.log('Add some requested games');
-            //           const requestedPromise = [560, 12, 456, 25, 387].flatMap((quantity, index) => {
-            //             return shuffle(games).slice(0, quantity).map((game) => {
-            //               return graphDAO.upsertRequested(users[index].id, game._id, {
-            //                 at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            //               });
-            //             });
-            //           });
-            //           Promise.all(requestedPromise).then(() => {
-            //             console.log('Done, closing sockets');
-            //             Promise.all([
-            //               documentDAO.close(),
-            //               graphDAO.close()
-            //             ]).then(() => {
-            //               console.log('Done with importation');
-            //             });
-            //           });
-            //         });
-            //       });
-            //     });
-            //   });
+//
+//   // Add some films added by users
+//   console.log('Add some films liked by users');
+//   const addedPromise = [400, 87, 0, 34, 58].flatMap((quantity, index) => {
+//     return shuffle(games).slice(0, quantity).map((game) => {
+//       return graphDAO.upsertAdded(users[index].id, game._id, {
+//         at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
+//       });
+//     });
+//   });
+//   Promise.all(addedPromise).then(() => {
+//
+//     // Add some games liked by users
+//     console.log('Add some games liked by users');
+//     const likePromise = [280, 34, 98, 254, 0].flatMap((quantity, index) => {
+//       return shuffle(games).slice(0, quantity).map((game) => {
+//         return graphDAO.upsertGameLiked(users[index], game._id, {
+//           rank: Math.floor(Math.random() * 5) + 1,
+//           at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
+//         });
+//       });
+//     });
+//     Promise.all(likePromise).then(() => {
+//
+//       // Add some actors liked by users
+//       console.log('Add some actors liked by users');
+//       const actorsPromise = [300, 674, 0, 45, 36].flatMap((quantity, index) => {
+//         return shuffle(actors).slice(0, quantity).map(([actorId]) => {
+//           return graphDAO.upsertActorLiked(users[index].id, actorId, {
+//             rank: Math.floor(Math.random() * 5) + 1,
+//             at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
+//           });
+//         });
+//       });
+//       Promise.all(actorsPromise).then(() => {
+//         // Add some genres liked by users
+//         console.log('Add some genres liked by users');
+//         const genrePromise = [22, 3, 0, 4, 7].flatMap((quantity, index) => {
+//           return shuffle(genres).slice(0, quantity).map(([genreId, actor]) => {
+//             return graphDAO.upsertGenreLiked(users[index].id, genreId, {
+//               rank: Math.floor(Math.random() * 5) + 1,
+//               at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
+//             });
+//           });
+//         });
+//         Promise.all(genrePromise).then(() => {
+//           // Add some games requested
+//           console.log('Add some requested games');
+//           const requestedPromise = [560, 12, 456, 25, 387].flatMap((quantity, index) => {
+//             return shuffle(games).slice(0, quantity).map((game) => {
+//               return graphDAO.upsertRequested(users[index].id, game._id, {
+//                 at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
+//               });
+//             });
+//           });
+//           Promise.all(requestedPromise).then(() => {
+//             console.log('Done, closing sockets');
+//             Promise.all([
+//               documentDAO.close(),
+//               graphDAO.close()
+//             ]).then(() => {
+//               console.log('Done with importation');
+//             });
+//           });
+//         });
+//       });
+//     });
+//   });
 
 
 

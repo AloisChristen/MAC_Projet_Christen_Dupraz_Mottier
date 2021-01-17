@@ -85,6 +85,14 @@ class DocumentDAO {
       _id: it._id.toString()
     }));
   }
+
+  async getAllStreamers() {
+    let streamers = await this.streamerCollection.find().toArray();
+    return streamers.map((it) => ({
+      ...it,
+      _id: it._id.toString()
+    }));
+  }
 }
 
 module.exports = DocumentDAO;
