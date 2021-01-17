@@ -9,10 +9,11 @@ dotenv.config();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const graphDAO = new GraphDAO();
 const documentDAO = new DocumentDAO();
+const twitch = new TwitchAPI();
 
 function stripMargin(template, ...expressions) {
   const result = template.reduce((accumulator, part, i) => {
-      return accumulator + expressions[i - 1] + part;
+    return accumulator + expressions[i - 1] + part;
   });
   return result.replace(/(\n|\r|\r\n)\s*\|/g, '$1');
 }
@@ -20,7 +21,7 @@ function stripMargin(template, ...expressions) {
 function buildLikeKeyboard(gameId, currentLike) {
   return {
     inline_keyboard: [
-      [1,2,3,4,5].map((v) => ({
+      [1, 2, 3, 4, 5].map((v) => ({
         text: currentLike && currentLike.rank === v ? "★".repeat(v) : "☆".repeat(v),
         callback_data: v + '__' + gameId, // payload that will be retrieved when button is pressed
       })),
@@ -31,7 +32,7 @@ function buildLikeKeyboard(gameId, currentLike) {
 // User is using the inline query mode on the bot
 bot.on('inline_query', (ctx) => {
   const query = ctx.inlineQuery;
-  if (query) { 
+  if (query) {
     documentDAO.getGames(query.query).then((games) => {
       const answer = games.map((game) => ({
         id: game._id,
@@ -43,12 +44,29 @@ bot.on('inline_query', (ctx) => {
           message_text: stripMargin`
             |Title: ${game._id}
             |Year: ${game._year}
-            |Platforms : ${game.platform}
+            |Platforms : ${game.platforms}
             |Genres: ${game.genres}
           `
         },
       }));
-      ctx.answerInlineQuery(answer);  
+      /*const game = games[0];
+      console.log(game);
+      const streams = twitch.getStreamers(game._id).then((str) => {
+      const answer = [{
+        id: game._id,
+        type: 'article',
+        title: game._id,
+        description: game.description,
+        reply_markup: buildLikeKeyboard(game._id),
+        input_message_content: {
+          message_text: stripMargin`
+            |Title: ${game._id}
+            |Year: ${game._year}
+            |Platforms : ${game.platforms}
+            |Genres: ${game.genres}
+          `
+      }}];*/
+      ctx.answerInlineQuery(answer);
     });
   }
 });
@@ -60,8 +78,25 @@ bot.on('chosen_inline_result', (ctx) => {
     graphDAO.getGameLiked(ctx.from.id, ctx.chosenInlineResult.result_id).then((liked) => {
       if (liked !== null) {
         ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, liked));
-      }  
-    });
+      }
+      console.log("from " + ctx.chosenInlineResult.result_id);
+      const streams = twitch.getStreamers(ctx.chosenInlineResult.result_id).then((streams) => {
+        const streamDisplay = streams.slice(0, 11).map(stream => ({
+          user: stream.userDisplayName,
+          title: stream.title,
+          url: stream.thumbNailUrl,
+          reply_markup: buildLikeKeyboard(stream.title),
+          input_message_content: {
+            message_text: stripMargin`
+              |User: ${stream.userDisplayName}
+              |Title: ${stream.title}
+              |Url: ${stream.thumbNailUrl}
+            `}
+        }));
+        console.log("stream display " + streamDisplay);
+        //ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, streamDisplay));
+      });
+    })
   }
 });
 
@@ -82,7 +117,7 @@ bot.on('callback_query', (ctx) => {
       ...ctx.from,
     }, gameId, liked).then(() => {
       ctx.editMessageReplyMarkup(buildLikeKeyboard(gameId, liked));
-    }); 
+    });
   }
 });
 
@@ -104,7 +139,8 @@ bot.command('start', (ctx) => {
 });
 
 bot.command('recommendactor', (ctx) => {
-  if (!ctx.from || !ctx.from.id) {
+  console.log("recommand actor");
+  /*if (!ctx.from || !ctx.from.id) {
     ctx.reply('We cannot guess who you are');
   } else {
     graphDAO.recommendActors(ctx.from.id).then((records) => {
@@ -118,7 +154,7 @@ bot.command('recommendactor', (ctx) => {
         ctx.reply(`Based your like and dislike we recommend the following actor(s):\n\t${actorsList}`);
       }
     });
-  }
+  }*/
 });
 
 
