@@ -176,36 +176,59 @@ async function addData() {
   let platforms = data.platforms;
   console.log("Platforms : " + platforms);
   await insertInNeo4j(games, genres, platforms);
-  await loadStreamerFromGames(games.slice(1,50));
+  await loadStreamerFromGames(games.slice(0,5));
   await loadFakeRelationGameStreamer();
 }
 
 
 async function loadStreamerFromGames(games){
-  games.forEach((game) => loadStreamerFromGame(game));
+  for await (const game of games){
+    await loadStreamerFromGame(game, 10);
+  }
 }
 
 async function loadFakeRelationGameStreamer(){
-  documentDAO.getAllStreamers().then((streamer) => {
-    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
+  documentDAO.getAllStreamers().then((streamers) => {
+    console.log("Streamers : " + streamers.length);
+    streamers.forEach((streamer) => {
+      documentDAO.getRandomGames(3).then((games) => {
+        games.forEach((game) => {
+          graphDAO.upsertFakeRelationGameStreamer(streamer._id, game._id);
+        });
+      });
+    })
   });
 
 }
 
-async function loadStreamerFromGame(game){
+async function loadStreamerFromGame(game, max_streamers){
   let twitchGame = await twitch_API.getGame(game);
   let streams = await twitchGame.getStreams();
-  streams.data.forEach((stream) => {
-    stream.getUser().then((streamer) => {
-      documentDAO.insertStreamer({
-        displayName: streamer.displayName,
-        name: streamer.name,
-        _id: streamer.id,
-        language: streamer.language,
-      });
-     graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => {});
+  let total_streamer = 0;
+  await new Promise(resolve => setTimeout(resolve, 200));
+  for await (const stream of streams.data){
+    if(total_streamer > max_streamers) break;
+    let streamer = await stream.getUser();
+    await documentDAO.insertStreamer({
+      displayName: streamer.displayName,
+      name: streamer.name,
+      _id: streamer.id,
+      language: streamer.language,
     });
-  });
+    await graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => {console.log("Streamder added : " + streamer.name)});
+
+  }
+  // streams.data.forEach((stream) => {
+  //   stream.getUser().then((streamer) => {
+  //     documentDAO.insertStreamer({
+  //       displayName: streamer.displayName,
+  //       name: streamer.name,
+  //       _id: streamer.id,
+  //       language: streamer.language,
+  //     });
+  //    graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => {});
+  //   });
+  // });
 }
 
 // MAIN
