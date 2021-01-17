@@ -7,8 +7,10 @@ const { join } = require('path');
 const DocumentDAO = require('./DocumentDAO');
 const Twitch_API = require('./twitch_API');
 
-const twitchGamesCSV = join(__dirname, '../data/twitch_games2.csv');
+
 const allGamesCSV = join(__dirname, '../data/games_old.csv');
+const twitchGamesCSV = join(__dirname, '../data/twitch_games.csv');
+const twitchStreamerCSV = join(__dirname, '../data/twitch_streamers.csv');
 
 dotenv.config();
 
@@ -97,7 +99,79 @@ async function selectTwitchGames(nb) {
     return selectedGames;
 }
 
-async function writeCSV(games){
+
+
+async function selectTwitchStreamers(nb, allGames){
+    return await loadStreamerFromGames(allGames.slice(0, nb), 3, allGames);
+}
+
+async function loadStreamerFromGames(games, max_streamers, allGames){
+    let streamers = []
+    for await (const game of games){
+        streamers = streamers.concat(await loadStreamerFromGame(game, max_streamers, allGames));
+    }
+    return streamers;
+}
+
+async function loadStreamerFromGame(game, max_streamers, allGames){
+    console.log("Searching streamers for game " + game.name)
+    let streamers = [];
+    let twitchGame = await twitch_API.getGame(game);
+    let streams = await twitchGame.getStreams();
+    let total_streamer = 0;
+    await new Promise(resolve => setTimeout(resolve, 200));
+    for await (const stream of streams.data){
+        if(total_streamer > max_streamers) break;
+        total_streamer++;
+        let streamer = await stream.getUser();
+        let streamerHash = {
+            name: streamer.name,
+            twitchId: streamer.id,
+            // language: streamer.language,
+            gamesPlayed: await getAllGamesPlayed(streamer, allGames, game),
+        };
+        streamers.push(streamerHash);
+    }
+    return streamers;
+}
+
+async function getAllGamesPlayed(streamer, allGames, current){
+   let gamesPlayed = []
+   let hashGames = await twitch_API.getAllGamesPlayed(streamer, 20);
+   if (hashGames[current._id] === undefined)
+       hashGames[current._id] = 0;
+   hashGames[current._id]++;
+   for(const id of Object.keys(hashGames)){
+       let twitchGame = allGames.find((game) => game._id === id);
+       if (twitchGame !== undefined){
+           gamesPlayed.push({id: twitchGame._id, total: hashGames[id], name: twitchGame.name});
+       }
+   }
+   return gamesPlayed;
+}
+
+async function writeStreamerCSV(streamers){
+    let columnsName = ["id", "name", "language", "games_names", "play_count"];
+    let csvContent = "";
+    streamers = streamers.map((s) => {
+        let games_names = "\"" + s.gamesPlayed.map(g => g.name).join(",") + "\"";
+        let play_counts = "\"" + s.gamesPlayed.map(g => g.total).join(",") + "\"";
+
+        return [
+           s.twitchId, s.name, s.language, games_names, play_counts
+        ];
+    });
+    csvContent += columnsName.join(",") + "\r\n";
+    streamers.forEach(function(rowArray) {
+        let row = rowArray.join(",");
+        csvContent += row + "\r\n";
+    });
+    console.log(csvContent);
+    await fs.writeFile(twitchStreamerCSV, csvContent, 'utf8')
+        .catch(err => {console.log(err.message);});
+}
+
+async function writeGamesCSV(games){
     let columnsName = ["id", "basename", "name", "year", "platform", "genres", "critic_score", "user_score"];
     let csvContent = "";
     games = games.map((g) => {
@@ -106,7 +180,8 @@ async function writeCSV(games){
         return [
             g.twitchId, g.games.basename, g.twichName,
             g.games.year, platforms, genres,
-            g.games.critic_score, g.games.user_score];
+            g.games.critic_score, g.games.user_score
+        ];
     });
     csvContent += columnsName.join(",") + "\r\n";
     games.forEach(function(rowArray) {
@@ -129,8 +204,10 @@ async function prepareMongo() {
 async function main() {
    await prepareMongo();
    // Creating TwitchGames CSV;
-    let selection = await selectTwitchGames(500);
-    await writeCSV(selection);
+    let gamesSelection = await selectTwitchGames(500);
+    // await writeGamesCSV(gamesSelection);
+    let streamersSelection = await selectTwitchStreamers(100, gamesSelection);
+    await writeStreamerCSV(streamersSelection);
 }
 
 main().then(() => {
