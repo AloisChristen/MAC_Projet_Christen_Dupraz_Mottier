@@ -1,10 +1,10 @@
 const ApiClient = require('twitch');
 const ClientCredentialsAuthProvider =  require('twitch-auth');
+//const { HelixStreamApi } = require('twitch/lib/API/Helix/Stream/HelixStreamApi');
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 
 class twitch_API {
 
@@ -49,10 +49,13 @@ class twitch_API {
         await sleep(500);
         return this.paginator.getNext();
     }
+
+    async getStreamers(idGame){
+        let game = await this.apiClient.helix.games.getGameByName(idGame);
+        let streams = await game.getStreams();
+        
+        return streams.data;
+    }
 }
 
-
-
-
 module.exports = twitch_API;
-
