@@ -312,7 +312,7 @@ class GraphDAO {
   recommendGames(userId) {
     return this.run(`
       match (u:User{id: $userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
-      where id(g) < id(g2) and l.rank > 3 
+      where id(g) < id(g2) and l.rank > 3
       and not ((u)-[:LIKED]->(g2))
       return g2.id, g2.basename, count(*)
       order by count(*) desc
