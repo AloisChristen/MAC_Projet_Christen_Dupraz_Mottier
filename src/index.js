@@ -45,21 +45,23 @@ bot.on('inline_query', (ctx) => {
   if (query) {
     documentDAO.getGames(query.query).then((games) => {
 
-      const answer = games.map((game) => ({
-        id: game.basename,
-        type: 'article',
-        title: game.name,
-        description: game.description,
-        reply_markup: buildLikeKeyboard(game.basename),
-        input_message_content: {
-          message_text: stripMargin`
-            |Title: ${game.name}
-            |Year: ${game.year}
-            |Platforms : ${game.platforms}
-            |Genres: ${game.genres}
-          `
-        },
-      }));
+      const answer = games.map((game) => {
+        return {
+          id: game.basename,
+          type: 'article',
+          title: game.name,
+          description: game.description,
+          reply_markup: buildLikeKeyboard(game.basename),
+          input_message_content: {
+            message_text: stripMargin`
+              |Title: ${game.name}
+              |Year: ${game.year}
+              |Platforms : ${game.platforms}
+              |Genres: ${game.genres}
+            `
+          },
+        };
+      });
       ctx.answerInlineQuery(answer).then(() => {});
     });
   }
