@@ -93,6 +93,11 @@ class DocumentDAO {
       _id: it._id.toString()
     }));
   }
+
+  async getStreamerById(streamerId){
+    return this.streamerCollection.findOne({ _id: streamerId });
+  }
+
 }
 
 module.exports = DocumentDAO;

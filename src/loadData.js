@@ -187,7 +187,7 @@ async function loadStreamerFromGames(games){
 
 async function loadFakeRelationGameStreamer(){
   documentDAO.getAllStreamers().then((streamer) => {
-    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
+    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertRelationGameStreamer(streamer.id, game._id));
   });
 
 }
