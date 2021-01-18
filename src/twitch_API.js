@@ -56,6 +56,19 @@ class twitch_API {
         
         return streams.data;
     }
+
+    async getAllGamesPlayed(streamer, nb = 20){
+        let clips = await this.apiClient.helix.clips.getClipsForBroadcaster(streamer.id);
+        let hashOfGames = clips.data.map(g => g.gameId).slice(0,nb).reduce(function(h, id){
+            if(h[id] === undefined){
+                h[id] = 1;
+            } else if(id.trim() !== ''){ // On évite les résultats NULL
+                h[id] += 1;
+            }
+            return h;
+        }, {});
+        return hashOfGames;
+    }
 }
 
 module.exports = twitch_API;

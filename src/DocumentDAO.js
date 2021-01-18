@@ -75,7 +75,7 @@ class DocumentDAO {
   }
 
   getRandomGames(n) {
-    return this.gameCollection.find().limit(n).toArray();
+    return this.gameCollection.aggregate([{ $sample: { size: n } }]).toArray();
   }
 
   async getAllGames() {

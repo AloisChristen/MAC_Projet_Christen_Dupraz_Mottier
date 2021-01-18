@@ -9,6 +9,7 @@ const GraphDAO = require('./GraphDAO');
 const Twitch_API = require('./twitch_API');
 
 const twitchGamesCSV = join(__dirname, '../data/twitch_games.csv');
+const twitchStreamerCSV = join(__dirname, '../data/twitch_streamers.csv');
 
 
 dotenv.config();
@@ -77,7 +78,7 @@ async function writeUsers() {
   await Promise.all(users.map((user) => graphDAO.upsertUser(user)));
 }
 
-async function parseGame() {
+async function parseGames() {
   console.log('Parsing CSV');
   let parsedGames = await parseCSV(twitchGamesCSV);
   console.log("Writing games to mongo");
@@ -113,10 +114,37 @@ async function parseGame() {
   });
 }
 
+async function parseStreamers() {
+  console.log('Parsing CSV');
+  let parsedStreamers = await parseCSV(twitchStreamerCSV);
+  console.log("Writing Streamer to mongo");
+  const parseStreamersBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  parseStreamersBar.start(parsedStreamers.length, 0);
+
+  // twitch games CSV format
+  /**/
+  await Promise.all(parsedStreamers.slice(1).map((it) => {
+    const [
+      id, name, language, games_played, plays_count
+    ] = it;
+    documentDAO.insertStreamer({
+      id, name, games_played, plays_count
+    }).then(() => parseStreamersBar.increment());
+    /**/
+  })).then(() => {
+    parseStreamersBar.stop();
+  });
+}
+
 async function loadGames() {
   // Load them back to get their id along
   console.log('Loading games back in memory');
   return await documentDAO.getAllGames();
+
+}
+
+async function loadStreamers() {
+  return await documentDAO.getAllStreamers();
 }
 
 
@@ -135,14 +163,14 @@ function calculateGenreAndPlatForms(games) {
   };
 }
 
-function insertInNeo4j(games, genres, platforms){
+function insertGamesInNeo4j(games, genres, platforms){
   console.log('Handling game insertion in Neo4j');
   const gamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   gamesBar.start(games.length, 0);
-  Promise.all(games.map((game) => new Promise((resolve1) => {
+  return Promise.all(games.map((game) => new Promise((resolve1) => {
     const gameGenres = game.genres.split(',').map(i => i.trim());
     const gamePlatforms = game.platforms.split(',').map(i => i.trim());
-    graphDAO.upsertGame(game._id, game.name).then(() => {
+    graphDAO.upsertGame(game._id, game.basename).then(() => {
 
       // Update platform <-> game links
       Promise.all(gamePlatforms.map((name) => {
@@ -162,22 +190,39 @@ function insertInNeo4j(games, genres, platforms){
   }).then(() => {
     gamesBar.stop();
   }))).then(() => {
-    console.log("Data loaded");
+    console.log("Games loaded");
+  });
+}
+
+async function insertStreamerInNeo4j(streamers){
+  console.log('Handling streamers insertion in Neo4j');
+  return Promise.all(streamers.map((streamer) => new Promise(async (resolve1) => {
+    const gamesNames = streamer.games_played.split(',').map(i => i.trim());
+    const playsCount = streamer.plays_count.split(',').map(i => i.trim());
+    for(let i in gamesNames){
+      console.log("Inserting streamer : " + streamer.name);
+      console.log(gamesNames[i]);
+      console.log(playsCount[i]);
+      await graphDAO.upsertStreamer(gamesNames[i], streamer, playsCount[i])
+    }
+  }))).then(() => {
+    console.log("Streamers loaded");
   });
 }
 
 async function addData() {
   await writeUsers();
-  await parseGame();
+  await parseGames();
+  await parseStreamers();
   let games = await loadGames();
+  let streamers = await loadStreamers();
   let data = calculateGenreAndPlatForms(games);
   let genres = data.genres;
   console.log("Genres : " + genres);
   let platforms = data.platforms;
   console.log("Platforms : " + platforms);
-  await insertInNeo4j(games, genres, platforms);
-  await loadStreamerFromGames(games.slice(1,50));
-  await loadFakeRelationGameStreamer();
+  await insertGamesInNeo4j(games, genres, platforms);
+  await insertStreamerInNeo4j(streamers);
 }
 
 

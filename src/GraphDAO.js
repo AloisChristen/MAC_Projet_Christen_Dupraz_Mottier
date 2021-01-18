@@ -75,29 +75,32 @@ class GraphDAO {
 
   getGenresByGameId(gameId){
     return this.run(`MATCH(:Game{id: $gameId})-[l:BELONGS_TO]->()
-      MATCH (:)
     `);
   }
 
-  upsertGame(gameId, gameTitle) {
-    return this.run('MERGE (m:Game{id: $gameId}) ON CREATE SET m.basename = $gameTitle RETURN m', {
+  upsertGame(gameId, basename) {
+    return this.run(
+        `MERGE (m:Game{id: $gameId})
+                ON CREATE SET m.basename = $gameTitle 
+              RETURN m`,
+        {
       gameId,
-      gameTitle,
+      gameTitle : basename,
     });
   }
 
-  upsertStreamer(streamerId, streamerName, gameId){
-    return this.run(`
-      MATCH (g:Game{ id: $gameId })
-      MERGE (s:Streamer{id: $streamerId})
-      ON CREATE SET s.name = $streamerName
-      MERGE (s)-[r:PLAYS_TO]->(g)
-      `, {
-      gameId,
-      streamerId,
-      streamerName,
-    });
-  }
+  // upsertStreamer(streamerId, streamerName, gameId){
+  //   return this.run(`
+  //     MATCH (g:Game{ id: $gameId })
+  //     MERGE (s:Streamer{id: $streamerId})
+  //     ON CREATE SET s.name = $streamerName
+  //     MERGE (s)-[r:PLAYS_TO]->(g)
+  //     `, {
+  //     gameId,
+  //     streamerId,
+  //     streamerName,
+  //   });
+  // }
 
   upsertRelationGameStreamer(streamerId, gameId){
     return this.run(`
@@ -120,6 +123,21 @@ class GraphDAO {
       gameId,
       platformId: platform.id,
       platformName: platform.name,
+    });
+  }
+
+  upsertStreamer(gameName, streamer, count) {
+    return this.run(`
+      MATCH (g:Game{ basename: $gameName })
+      MERGE (s:Streamer{id: $streamerId})
+        ON CREATE SET s.name = $streamerName
+      MERGE (s)-[r:PLAYS_TO]->(g)
+        ON CREATE SET r.count = $rCount
+    `, {
+      gameName,
+      streamerId: streamer.id,
+      streamerName: streamer.name,
+      rCount: count
     });
   }
 
