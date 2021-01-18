@@ -150,24 +150,25 @@ bot.command('recommendstreamer', (ctx) => {
 bot.command( 'recommendgame', (ctx) => {
   console.log("Recommend Games" + ctx.from.id);
 
-  let streamDisplay = [];
-  graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
-
-    for await(const streamer of streamers){
-      await documentDAO.getStreamerById(streamer._fields[0]).then((s) => {
-        streamDisplay.push({
-          id: s.id,
-          url: "https://www.twitch.tv/" + s.name,
-          input_message_content: {
-            message_text: stripMargin`
-              |User: ${s.name}
-              |Url: ${"https://www.twitch.tv/" + s.name}
-            `}
-        });
+  let gameDisplay = [];
+  graphDAO.recommendGames(ctx.from.id).then(async (games) => {
+    for await(const game of games){
+      await documentDAO.getGameById(game._fields[0]).then((g) => {
+        gameDisplay.push({
+            id: g.basename,
+            input_message_content: {
+              message_text: stripMargin`
+            |Title: ${g.name}
+            |Year: ${g.year}
+            |Platforms : ${g.platforms}
+            |Genres: ${g.genres}
+            |Twitch: ${"https://www.twitch.tv/directory/game/" + encodeURI(g.name)}
+          `
+            }});
       });
     }
-    for (const current in streamDisplay) {
-      ctx.reply(streamDisplay[current].input_message_content.message_text).then(() =>{});
+    for (const current in gameDisplay) {
+      ctx.reply(gameDisplay[current].input_message_content.message_text).then(() =>{});
     }
   });
 })
