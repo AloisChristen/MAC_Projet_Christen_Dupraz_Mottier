@@ -277,8 +277,11 @@ class GraphDAO {
   recommendStreamers(userId) {
     return this.run(`
       match (u:User{id: $userId})-[l:LIKED]->(g:Game)<-[p:PLAYS_TO]-(s:Streamer)
+      OPTIONAL match (u)-[l2:LIKED]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)<-[p2:PLAYS_TO]-(s)
       where l.rank > 3
-      return s.id, s.name, sum(toInteger(p.count) * l.rank + 5) as score
+        AND not ((u)-[:LIKED]->(g2))
+      return s.id, s.name, 
+      sum(toInteger(p.count) * l.rank + 5 + CASE WHEN l2 IS NOT NULL THEN l2.rank ELSE 0 END ) as score
       ORDER BY score DESC
       limit 5
     `, {
@@ -289,10 +292,12 @@ class GraphDAO {
   recommendGames(userId) {
     return this.run(`
       match (u:User{id: userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
-      OPTIONAL match (g)-[:PLAYED_ON]->(p:Platform)<-[:PLAYED_ON]-(g2)
+      OPTIONAL match (u)-[:OWNS]->(p:Platform)<-[:PLAYED_ON]-(g2)
+      OPTIONAL match (u)-[l2:LIKED]->(t)
       where id(g) < id(g2) and l.rank > 3
       and not ((u)-[:LIKED]->(g2))
-      return g2.id, g2.basename, sum(l.rank + CASE WHEN p IS NULL THEN  0 ELSE 1 END) as score
+      return g2.id, g2.basename, 
+      sum(l.rank + CASE WHEN p IS NOT NULL THEN 10 ELSE 0 END + CASE WHEN l2 IS NOT NULL THEN l2.rank ELSE 0 END) as score
       order by score desc
       limit 5
     `, {
