@@ -40,23 +40,12 @@ class DocumentDAO {
 
     return this.gameCollection.aggregate([
       {$match: {'name': new RegExp(search, "gi")}},
-      {
-        $group: {
-          _id: {
-            name: "$name",
-            basename: "$basename",
-          },
-          platforms: {$addToSet: "$platform"},
-          _year: {$min: "$year"},
-          genres: {$addToSet: "$genre"}
-        }
-      },
       {$limit: 10},
       {$project: {
-          name: "$_id.name",
-          basename: "$_id.basename",
+          name: "$name",
+          basename: "$basename",
           platforms: "$platforms",
-          year: "$_year",
+          year: "$year",
           genres: "$genres"
         }}
     ]).toArray();
