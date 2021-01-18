@@ -142,7 +142,7 @@ function insertInNeo4j(games, genres, platforms){
   Promise.all(games.map((game) => new Promise((resolve1) => {
     const gameGenres = game.genres.split(',').map(i => i.trim());
     const gamePlatforms = game.platforms.split(',').map(i => i.trim());
-    graphDAO.upsertGame(game._id, game.basename).then(() => {
+    graphDAO.upsertGame(game._id, game.name).then(() => {
 
       // Update platform <-> game links
       Promise.all(gamePlatforms.map((name) => {

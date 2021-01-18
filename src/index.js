@@ -78,12 +78,14 @@ bot.on('chosen_inline_result', (ctx) => {
 
 bot.on('callback_query', (ctx) => {
   if (ctx.callbackQuery && ctx.from) {
-    const [rank, gameId] = ctx.callbackQuery.data.split('__');
+    console.log(ctx.callbackQuery.data);
+    const [rank, game] = ctx.callbackQuery.data.split('__');
     const liked = {
       rank: parseInt(rank, 10),
       at: new Date()
     };
     let user = {
+      id: ctx.from.id,
       first_name: 'unknown',
       last_name: 'unknown',
       language_code: 'fr',
@@ -91,10 +93,11 @@ bot.on('callback_query', (ctx) => {
       username: "guest_" + makeid(10),
       ...ctx.from,
     };
-
-      graphDAO.upsertGameLiked(user, gameId, liked).then(() => {
-        ctx.editMessageReplyMarkup(buildLikeKeyboard(gameId, liked));
-      });
+  console.log("Create user : " + user);
+    graphDAO.upsertGameLiked(user, game, liked).then(() => {
+      console.log("Like added");
+      ctx.editMessageReplyMarkup(buildLikeKeyboard(game, liked));
+    });
 
 
   }
