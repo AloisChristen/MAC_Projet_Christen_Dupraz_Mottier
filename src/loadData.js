@@ -142,7 +142,7 @@ function insertInNeo4j(games, genres, platforms){
   Promise.all(games.map((game) => new Promise((resolve1) => {
     const gameGenres = game.genres.split(',').map(i => i.trim());
     const gamePlatforms = game.platforms.split(',').map(i => i.trim());
-    graphDAO.upsertGame(game._id, game.basename).then(() => {
+    graphDAO.upsertGame(game._id, game.name).then(() => {
 
       // Update platform <-> game links
       Promise.all(gamePlatforms.map((name) => {
@@ -187,7 +187,7 @@ async function loadStreamerFromGames(games){
 
 async function loadFakeRelationGameStreamer(){
   documentDAO.getAllStreamers().then((streamer) => {
-    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertFakeRelationGameStreamer(streamer.id, game._id));
+    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertRelationGameStreamer(streamer.id, game._id));
   });
 
 }

@@ -17,8 +17,17 @@ class GraphDAO {
   }
 
   upsertGameLiked(user, gameId, liked) {
+
+    console.log("userId : " + this.toInt(user.id));
+    console.log("isBot : " + user.is_bot);
+    console.log("firstName : " + user.first_name);
+    console.log("lastName : " + user.last_name);
+    console.log("languageCode : " + user.language_code);
+    console.log("likedRank : " + user.rank);
+    console.log("likedAt : " + this.toDate(liked.at));
+    console.log("Upsert Game liked : " + gameId);
     return this.run(`
-      MATCH (m:Game {id: $gameId})
+      MATCH (m:Game {name: $gameId})
         MERGE (u:User {id: $userId})
           ON CREATE SET u.isBot = $isBot,
                         u.firstName = $firstName,
@@ -36,13 +45,13 @@ class GraphDAO {
           ON MATCH SET  l.rank = $likedRank,
                         l.at = $likedAt
     `, {
-      gameId,
+      gameId: gameId,
+      userId: this.toInt(user.id),
       isBot: user.is_bot,
       firstName: user.first_name,
       lastName: user.last_name,
       languageCode: user.language_code,
       username: user.username,
-      userId: this.toInt(user.id),
       likedRank: liked.rank,
       likedAt: this.toDate(liked.at),
     });
@@ -62,6 +71,12 @@ class GraphDAO {
         }
       }
     });
+  }
+
+  getGenresByGameId(gameId){
+    return this.run(`MATCH(:Game{id: $gameId})-[l:BELONGS_TO]->()
+      MATCH (:)
+    `);
   }
 
   upsertGame(gameId, gameTitle) {
@@ -84,7 +99,7 @@ class GraphDAO {
     });
   }
 
-  upsertFakeRelationGameStreamer(streamerId, gameId){
+  upsertRelationGameStreamer(streamerId, gameId){
     return this.run(`
       MATCH (g:Game{ id: $gameId })
       MATCH (s:Streamer{id: $streamerId})
@@ -192,18 +207,18 @@ class GraphDAO {
     });
   }
 
-  upsertPlatformLiked(userId, platformId, liked) {
+  upsertPlatformLiked(user, platform, liked) {
     return this.run(`
-      MATCH (a:Platform{ id: $platformId })
-      MATCH (u:User{ id: $userId })
+      MATCH (a:Platform{ name: $platform })
+      MATCH (u:User{ id: $username })
       MERGE (u)-[r:LIKED]->(g)
       ON CREATE SET r.at = $at,
                     r.rank = $rank
       ON MATCH SET  r.at = $at,
                     r.rank = $rank
     `, {
-      userId: this.toInt(userId),
-      platformId: this.toInt(platformId),
+      username: user.username,
+      platform: platform,
       at: this.toDate(liked.at),
       rank: this.toInt(liked.rank)
     });
@@ -263,26 +278,17 @@ class GraphDAO {
     });
   }
 
-  recommendPlatforms(userId) {
-    /*
+  recommendStreamers(userId) {
     return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(m:Game)-[:PLAYED_ON]->(a:Platform)<-[:PLAYED_ON]-(m2:Game)<-[l2:LIKED]-(u)
-      where id(m) < id(m2) and l.rank > 3 and l2.rank > 3
-      return a, count(*)
+      match (u:User{id: $userId})-[l:LIKED]->(g:Game)<-[:PLAYS_TO]-(s:Streamer)-[:PLAYS_TO]->(g2:Game)<-[l2:LIKED]-(u)
+      where id(g) < id(g2) and l.rank > 3 and l2.rank > 3
+      return s, count(*)
       order by count(*) desc
       limit 5
     `, {
       userId
     }).then((result) => result.records);
-    */
-   return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(m:Game)-[:PLAYED_ON]->(a:Platform)
-      return a, count(*)
-      order by count(*) desc
-      limit 5
-    `, {
-      userId
-    }).then((result) => result.records);
+
   }
 
   toDate(value) {

@@ -11,6 +11,16 @@ const graphDAO = new GraphDAO();
 const documentDAO = new DocumentDAO();
 const twitch = new TwitchAPI();
 
+function makeid(length) {
+  var result           = '';
+  var characters       = '0123456789';
+  var charactersLength = characters.length;
+  for ( var i = 0; i < length; i++ ) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
+
 function stripMargin(template, ...expressions) {
   const result = template.reduce((accumulator, part, i) => {
     return accumulator + expressions[i - 1] + part;
@@ -68,22 +78,28 @@ bot.on('chosen_inline_result', (ctx) => {
 
 bot.on('callback_query', (ctx) => {
   if (ctx.callbackQuery && ctx.from) {
-    const [rank, gameId] = ctx.callbackQuery.data.split('__');
+    console.log(ctx.callbackQuery.data);
+    const [rank, game] = ctx.callbackQuery.data.split('__');
     const liked = {
       rank: parseInt(rank, 10),
       at: new Date()
     };
-
-    graphDAO.upsertGameLiked({
+    let user = {
+      id: ctx.from.id,
       first_name: 'unknown',
       last_name: 'unknown',
       language_code: 'fr',
       is_bot: false,
-      username: 'unknown',
+      username: "guest_" + makeid(10),
       ...ctx.from,
-    }, gameId, liked).then(() => {
-      ctx.editMessageReplyMarkup(buildLikeKeyboard(gameId, liked));
+    };
+  console.log("Create user : " + user);
+    graphDAO.upsertGameLiked(user, game, liked).then(() => {
+      console.log("Like added");
+      ctx.editMessageReplyMarkup(buildLikeKeyboard(game, liked));
     });
+
+
   }
 });
 
@@ -105,33 +121,35 @@ bot.command('start', (ctx) => {
 });
 
 bot.command('recommendstreamer', (ctx) => {
-  twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
-    async function getUser(streams) {
-      let streamDisplay = [];
-      for await (let stream of streams.slice(0, 6)) {
-        let userName = await stream.getUser().then((u) => u.name);
+  console.log("Recommend Streamers");
+  //twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
+  let streamDisplay = [];
+  graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
+
+    for await(const streamer of streamers){
+      console.log(streamer.name);
+      documentDAO.getStreamerById(streamer._id).then((s) => {
+        console.log(s.basename);
         streamDisplay.push({
-          id: stream.userId,
-          title: stream.title,
-          url: "https://www.twitch.tv/" + userName,
-          reply_markup: buildLikeKeyboard(stream.title),
+          id: s._id,
+          url: "https://www.twitch.tv/" + s.basename,
           input_message_content: {
             message_text: stripMargin`
-              |User: ${stream.userDisplayName}
-              |Title: ${stream.title}
-              |Url: ${"https://www.twitch.tv/" + userName}
+              |User: ${s.name}
+              |Url: ${"https://www.twitch.tv/" + s.basename}
             `}
         });
-      }
-      return streamDisplay;
+      });
     }
-    getUser(streams).then((streamDisplay) => {
-      for (var current in streamDisplay) {
-        ctx.reply(streamDisplay[current].input_message_content.message_text);
-        //ctx.editMessageReplyMarkup(buildLikeKeyboard(streamDisplay[current].title));
-      }
-    });
   });
+  for (var current in streamDisplay) {
+    ctx.reply(streamDisplay[current].input_message_content.message_text);
+    //ctx.editMessageReplyMarkup(buildLikeKeyboard(streamDisplay[current].title));
+  }
+});
+
+
+
   /*if (!ctx.from || !ctx.from.id) {
     ctx.reply('We cannot guess who you are');
   } else {
@@ -147,7 +165,7 @@ bot.command('recommendstreamer', (ctx) => {
       }
     });
   }*/
-});
+
 
 
 // Initialize mongo connexion
