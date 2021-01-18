@@ -156,18 +156,6 @@ play</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>640</x>
-      <y>170</y>
-      <w>170</w>
-      <h>40</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-
-like</panel_attributes>
-    <additional_attributes>150.0;20.0;10.0;20.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
       <x>590</x>
       <y>200</y>
       <w>90</w>
@@ -188,29 +176,5 @@ like</panel_attributes>
     <panel_attributes>lt=&lt;-
 is</panel_attributes>
     <additional_attributes>10.0;70.0;40.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>560</x>
-      <y>200</y>
-      <w>50</w>
-      <h>190</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-
-like</panel_attributes>
-    <additional_attributes>10.0;170.0;10.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>520</x>
-      <y>180</y>
-      <w>270</w>
-      <h>270</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-
-like</panel_attributes>
-    <additional_attributes>250.0;230.0;250.0;250.0;10.0;250.0;10.0;10.0;30.0;10.0</additional_attributes>
   </element>
 </diagram>
