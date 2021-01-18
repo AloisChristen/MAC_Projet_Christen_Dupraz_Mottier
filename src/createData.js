@@ -66,6 +66,27 @@ async function parseAllGames() {
         user_score,
         year
       }).then(() => parseGamesBar.increment());
+       // await Promise.all(parsedGames.slice(1).map((it) => {
+       //      const [
+       //          _id,
+       //          basename,
+       //          name,
+       //          year,
+       //          platforms,
+       //          genres,
+       //          critic_score,
+       //          user_score
+       //      ] = it;
+       //      documentDAO.insertGame({
+       //          _id,
+       //          basename,
+       //          name,
+       //          year,
+       //          platforms,
+       //          genres,
+       //          critic_score,
+       //          user_score
+       //      }).then(() => parseGamesBar.increment());
     })).then(() => {
         parseGamesBar.stop();
     });
@@ -144,14 +165,14 @@ async function getAllGamesPlayed(streamer, allGames, current){
    for(const id of Object.keys(hashGames)){
        let twitchGame = allGames.find((game) => game._id === id);
        if (twitchGame !== undefined){
-           gamesPlayed.push({id: twitchGame._id, total: hashGames[id], name: twitchGame.name});
+           gamesPlayed.push({id: twitchGame._id, total: hashGames[id], name: twitchGame.basename});
        }
    }
    return gamesPlayed;
 }
 
 async function writeStreamerCSV(streamers){
-    let columnsName = ["id", "name", "language", "games_names", "play_count"];
+    let columnsName = ["id", "name", "language", "games_played", "plays_count"];
     let csvContent = "";
     streamers = streamers.map((s) => {
         let games_names = "\"" + s.gamesPlayed.map(g => g.name).join(",") + "\"";
@@ -204,7 +225,8 @@ async function prepareMongo() {
 async function main() {
    await prepareMongo();
    // Creating TwitchGames CSV;
-    let gamesSelection = await selectTwitchGames(500);
+   //  let gamesSelection = await selectTwitchGames(500);
+    let gamesSelection = await documentDAO.getAllGames();
     // await writeGamesCSV(gamesSelection);
     let streamersSelection = await selectTwitchStreamers(100, gamesSelection);
     await writeStreamerCSV(streamersSelection);
