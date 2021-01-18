@@ -293,7 +293,7 @@ class GraphDAO {
 
   recommendGames(userId) {
     return this.run(`
-      match (u:User{id: userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
+      match (u:User{id: $userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
       OPTIONAL match (u)-[:OWNS]->(p:Platform)<-[:PLAYED_ON]-(g2)
       OPTIONAL match (u)-[l2:LIKED]->(t)
       where id(g) < id(g2) and l.rank > 3
@@ -303,7 +303,7 @@ class GraphDAO {
       order by score desc
       limit 5
     `, {
-      userId
+      userId: userId
     }).then((result) => result.records);
   }
 

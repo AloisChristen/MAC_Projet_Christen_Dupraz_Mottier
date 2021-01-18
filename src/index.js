@@ -127,6 +127,7 @@ bot.command('recommendstreamer', (ctx) => {
   console.log("Recommend Streamers" + ctx.from.id);
   //twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
   let streamDisplay = [];
+  console.log(ctx.from.id);
   graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
 
     for await(const streamer of streamers){

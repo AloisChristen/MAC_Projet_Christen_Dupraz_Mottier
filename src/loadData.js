@@ -53,7 +53,9 @@ const users = [
   buildUser(136451862, 'NukedFace', 'marcus', '', 'fr', false),
   buildUser(136451863, 'lauralol', 'laura', '', 'fr', false),
   buildUser(136451864, 'Saumonlecitron', 'jean-michel', '', 'fr', false),
-  buildUser(136415864, 'GTZL1', 'david', 'dupraz', 'fr', false),
+  buildUser(477061839, 'GTZL1', 'david', 'dupraz', 'fr', false),
+  buildUser(631121210, 'amottier25', 'alexandre', 'mottier', 'fr', false),
+  buildUser(659070900, 'aloischristen', 'alois', 'christen', 'fr', false),
 ];
 
 const graphDAO = new GraphDAO();
@@ -277,7 +279,7 @@ main().then(() => {
 async function addMoreData(games, platforms, genres) {
   // Add some games liked by users
   console.log('Add some games liked by users');
-  const likePromise = [280, 34, 98, 254, 0, 129].flatMap((quantity, index) => {
+  const likePromise = [83, 34, 98, 26, 0, 29,51,71].flatMap((quantity, index) => {
     return shuffle(games).slice(0, quantity).map((game) => {
       return graphDAO.upsertGameLiked(users[index], game.basename, {
         rank: Math.floor(Math.random() * 5) + 1,
@@ -289,7 +291,7 @@ async function addMoreData(games, platforms, genres) {
 
     // Add some platforms liked by users
     console.log('Add some platforms liked by users');
-    const plaformPromise = [300, 674, 0, 45, 36, 77].flatMap((quantity, index) => {
+    const plaformPromise = [30, 74, 0, 45, 36, 77,20,55].flatMap((quantity, index) => {
       return shuffle(platforms).slice(0, quantity).map((platform) => {
         let pName = platform[1];
         return graphDAO.upsertPlatformLiked(users[index], pName, {
@@ -301,7 +303,7 @@ async function addMoreData(games, platforms, genres) {
     Promise.all(plaformPromise).then(() => {
       /// Add some genres liked by users
       console.log('Add some genres liked by users');
-      const genrePromise = [22, 3, 0, 4, 7].flatMap((quantity, index) => {
+      const genrePromise = [22, 3, 0, 4, 7,1, 2, 13].flatMap((quantity, index) => {
         return shuffle(genres).slice(0, quantity).map(([genreId, actor]) => {
           return graphDAO.upsertGenreLiked(users[index].id, genreId, {
             rank: Math.floor(Math.random() * 5) + 1,
