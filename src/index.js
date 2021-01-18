@@ -9,10 +9,21 @@ dotenv.config();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const graphDAO = new GraphDAO();
 const documentDAO = new DocumentDAO();
+const twitch = new TwitchAPI();
+
+function makeid(length) {
+  var result           = '';
+  var characters       = '0123456789';
+  var charactersLength = characters.length;
+  for ( var i = 0; i < length; i++ ) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
 
 function stripMargin(template, ...expressions) {
   const result = template.reduce((accumulator, part, i) => {
-      return accumulator + expressions[i - 1] + part;
+    return accumulator + expressions[i - 1] + part;
   });
   return result.replace(/(\n|\r|\r\n)\s*\|/g, '$1');
 }
@@ -20,7 +31,7 @@ function stripMargin(template, ...expressions) {
 function buildLikeKeyboard(gameId, currentLike) {
   return {
     inline_keyboard: [
-      [1,2,3,4,5].map((v) => ({
+      [1, 2, 3, 4, 5].map((v) => ({
         text: currentLike && currentLike.rank === v ? "★".repeat(v) : "☆".repeat(v),
         callback_data: v + '__' + gameId, // payload that will be retrieved when button is pressed
       })),
@@ -31,7 +42,7 @@ function buildLikeKeyboard(gameId, currentLike) {
 // User is using the inline query mode on the bot
 bot.on('inline_query', (ctx) => {
   const query = ctx.inlineQuery;
-  if (query) { 
+  if (query) {
     documentDAO.getGames(query.query).then((games) => {
       const answer = games.map((game) => ({
         id: game._id,
@@ -43,12 +54,12 @@ bot.on('inline_query', (ctx) => {
           message_text: stripMargin`
             |Title: ${game._id}
             |Year: ${game._year}
-            |Platforms : ${game.platform}
+            |Platforms : ${game.platforms}
             |Genres: ${game.genres}
           `
         },
       }));
-      ctx.answerInlineQuery(answer);  
+      ctx.answerInlineQuery(answer);
     });
   }
 });
@@ -60,29 +71,35 @@ bot.on('chosen_inline_result', (ctx) => {
     graphDAO.getGameLiked(ctx.from.id, ctx.chosenInlineResult.result_id).then((liked) => {
       if (liked !== null) {
         ctx.editMessageReplyMarkup(buildLikeKeyboard(ctx.chosenInlineResult.result_id, liked));
-      }  
-    });
+      }
+    })
   }
 });
 
 bot.on('callback_query', (ctx) => {
   if (ctx.callbackQuery && ctx.from) {
-    const [rank, gameId] = ctx.callbackQuery.data.split('__');
+    console.log(ctx.callbackQuery.data);
+    const [rank, game] = ctx.callbackQuery.data.split('__');
     const liked = {
       rank: parseInt(rank, 10),
       at: new Date()
     };
-
-    graphDAO.upsertGameLiked({
+    let user = {
+      id: ctx.from.id,
       first_name: 'unknown',
       last_name: 'unknown',
       language_code: 'fr',
       is_bot: false,
-      username: 'unknown',
+      username: "guest_" + makeid(10),
       ...ctx.from,
-    }, gameId, liked).then(() => {
-      ctx.editMessageReplyMarkup(buildLikeKeyboard(gameId, liked));
-    }); 
+    };
+  console.log("Create user : " + user);
+    graphDAO.upsertGameLiked(user, game, liked).then(() => {
+      console.log("Like added");
+      ctx.editMessageReplyMarkup(buildLikeKeyboard(game, liked));
+    });
+
+
   }
 });
 
@@ -95,7 +112,7 @@ A user can display a game and set a reaction to this game (like, dislike).
 When asked, the bot will provide a recommendation based on the games he liked or disliked.
 
 Use inline queries to display a game, then use the inline keyboard of the resulting message to react.
-Use the command /recommendactor to get a personalized recommendation.
+Use the command /recommendstreamer to get a personalized recommendation.
   `);
 });
 
@@ -103,8 +120,37 @@ bot.command('start', (ctx) => {
   ctx.reply('HEIG-VD Mac project bot in javascript');
 });
 
-bot.command('recommendactor', (ctx) => {
-  if (!ctx.from || !ctx.from.id) {
+bot.command('recommendstreamer', (ctx) => {
+  console.log("Recommend Streamers");
+  //twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
+  let streamDisplay = [];
+  graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
+
+    for await(const streamer of streamers){
+      console.log(streamer.name);
+      documentDAO.getStreamerById(streamer._id).then((s) => {
+        console.log(s.basename);
+        streamDisplay.push({
+          id: s._id,
+          url: "https://www.twitch.tv/" + s.basename,
+          input_message_content: {
+            message_text: stripMargin`
+              |User: ${s.name}
+              |Url: ${"https://www.twitch.tv/" + s.basename}
+            `}
+        });
+      });
+    }
+  });
+  for (var current in streamDisplay) {
+    ctx.reply(streamDisplay[current].input_message_content.message_text);
+    //ctx.editMessageReplyMarkup(buildLikeKeyboard(streamDisplay[current].title));
+  }
+});
+
+
+
+  /*if (!ctx.from || !ctx.from.id) {
     ctx.reply('We cannot guess who you are');
   } else {
     graphDAO.recommendActors(ctx.from.id).then((records) => {
@@ -118,8 +164,8 @@ bot.command('recommendactor', (ctx) => {
         ctx.reply(`Based your like and dislike we recommend the following actor(s):\n\t${actorsList}`);
       }
     });
-  }
-});
+  }*/
+
 
 
 // Initialize mongo connexion

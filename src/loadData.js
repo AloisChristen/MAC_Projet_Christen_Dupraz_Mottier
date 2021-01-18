@@ -170,7 +170,7 @@ function insertGamesInNeo4j(games, genres, platforms){
   return Promise.all(games.map((game) => new Promise((resolve1) => {
     const gameGenres = game.genres.split(',').map(i => i.trim());
     const gamePlatforms = game.platforms.split(',').map(i => i.trim());
-    graphDAO.upsertGame(game._id, game).then(() => {
+    graphDAO.upsertGame(game._id, game.basename).then(() => {
 
       // Update platform <-> game links
       Promise.all(gamePlatforms.map((name) => {
@@ -223,6 +223,34 @@ async function addData() {
   console.log("Platforms : " + platforms);
   await insertGamesInNeo4j(games, genres, platforms);
   await insertStreamerInNeo4j(streamers);
+}
+
+
+async function loadStreamerFromGames(games){
+  games.forEach((game) => loadStreamerFromGame(game));
+}
+
+async function loadFakeRelationGameStreamer(){
+  documentDAO.getAllStreamers().then((streamer) => {
+    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertRelationGameStreamer(streamer.id, game._id));
+  });
+
+}
+
+async function loadStreamerFromGame(game){
+  let twitchGame = await twitch_API.getGame(game);
+  let streams = await twitchGame.getStreams();
+  streams.data.forEach((stream) => {
+    stream.getUser().then((streamer) => {
+      documentDAO.insertStreamer({
+        displayName: streamer.displayName,
+        name: streamer.name,
+        _id: streamer.id,
+        language: streamer.language,
+      });
+     graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => {});
+    });
+  });
 }
 
 // MAIN
