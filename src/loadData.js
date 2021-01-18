@@ -275,15 +275,6 @@ main().then(() => {
 
 
 async function addMoreData(games, platforms, genres) {
-  // Add some games added by users
-  /*console.log('Add some games liked by users');
-  const addedPromise = [400, 87, 0, 34, 58].flatMap((quantity, index) => {
-    return shuffle(games).slice(0, quantity).map((game) => {
-      return graphDAO.upsertAdded(users[index].id, game._id,
-        { at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000)) });
-    });
-  });
-  Promise.all(addedPromise).then(() => {*/
   // Add some games liked by users
   console.log('Add some games liked by users');
   const likePromise = [280, 34, 98, 254, 0, 129].flatMap((quantity, index) => {
@@ -300,7 +291,7 @@ async function addMoreData(games, platforms, genres) {
     console.log('Add some platforms liked by users');
     const plaformPromise = [300, 674, 0, 45, 36, 77].flatMap((quantity, index) => {
       return shuffle(platforms).slice(0, quantity).map((platform) => {
-        let pName=platform[1];
+        let pName = platform[1];
         return graphDAO.upsertPlatformLiked(users[index], pName, {
           rank: Math.floor(Math.random() * 5) + 1,
           at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
@@ -319,30 +310,14 @@ async function addMoreData(games, platforms, genres) {
         });
       });
       Promise.all(genrePromise).then(() => {
-        /*
-        // Add some games requested
-        console.log('Add some requested games');
-        const requestedPromise = [560, 12, 456, 25, 387].flatMap((quantity, index) => {
-          return shuffle(games).slice(0, quantity).map((game) => {
-            return graphDAO.upsertRequested(users[index].id, game._id, {
-              at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
-            });
-          });
-        });*/
-        //Promise.all(requestedPromise).then(() => {
         console.log('Done, closing sockets');
         Promise.all([
           documentDAO.close(),
           graphDAO.close()
         ]).then(() => {
           console.log('Done with importation');
-          //});
         });
       });
     });
   });
-  //});
 }
-
-
-
