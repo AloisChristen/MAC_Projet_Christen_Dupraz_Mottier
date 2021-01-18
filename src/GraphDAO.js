@@ -17,16 +17,6 @@ class GraphDAO {
   }
 
   upsertGameLiked(user, gameName, liked) {
-
-    console.log("userId : " + this.toInt(user.id));
-    console.log("isBot : " + user.is_bot);
-    console.log("firstName : " + user.first_name);
-    console.log("lastName : " + user.last_name);
-    console.log("languageCode : " + user.language_code);
-    console.log("likedRank : " + this.toInt(liked.rank));
-    console.log("likedAt : " + this.toDate(liked.at));
-    console.log("Upsert Game liked : " + gameName);
-    this.get
     return this.run(`
       MATCH (m:Game {basename: $gameName})
         MERGE (u:User {id: $userId})
@@ -89,19 +79,6 @@ class GraphDAO {
       gameTitle : basename,
     });
   }
-
-  // upsertStreamer(streamerId, streamerName, gameId){
-  //   return this.run(`
-  //     MATCH (g:Game{ id: $gameId })
-  //     MERGE (s:Streamer{id: $streamerId})
-  //     ON CREATE SET s.name = $streamerName
-  //     MERGE (s)-[r:PLAYS_TO]->(g)
-  //     `, {
-  //     gameId,
-  //     streamerId,
-  //     streamerName,
-  //   });
-  // }
 
   upsertRelationGameStreamer(streamerId, gameId){
     return this.run(`
@@ -299,10 +276,10 @@ class GraphDAO {
 
   recommendStreamers(userId) {
     return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(g:Game)<-[:PLAYS_TO]-(s:Streamer)-[:PLAYS_TO]->(g2:Game)<-[l2:LIKED]-(u)
-      where id(g) < id(g2) and l.rank > 3 and l2.rank > 3
-      return s.id, s.name, count(*)
-      order by count(*) desc
+      match (u:User{id: $userId})-[l:LIKED]->(g:Game)<-[p:PLAYS_TO]-(s:Streamer)
+      where l.rank > 3
+      return s.id, s.name, sum(toInteger(p.count) * l.rank + 5) as score
+      ORDER BY score DESC
       limit 5
     `, {
       userId
@@ -311,11 +288,12 @@ class GraphDAO {
 
   recommendGames(userId) {
     return this.run(`
-      match (u:User{id: $userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
+      match (u:User{id: userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
+      OPTIONAL match (g)-[:PLAYED_ON]->(p:Platform)<-[:PLAYED_ON]-(g2)
       where id(g) < id(g2) and l.rank > 3
       and not ((u)-[:LIKED]->(g2))
-      return g2.id, g2.basename, count(*)
-      order by count(*) desc
+      return g2.id, g2.basename, sum(l.rank + CASE WHEN p IS NULL THEN  0 ELSE 1 END) as score
+      order by score desc
       limit 5
     `, {
       userId
