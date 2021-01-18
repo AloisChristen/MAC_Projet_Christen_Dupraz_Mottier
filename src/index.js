@@ -46,21 +46,21 @@ bot.on('inline_query', (ctx) => {
     documentDAO.getGames(query.query).then((games) => {
 
       const answer = games.map((game) => ({
-        id: "" + game._id,
+        id: game.basename,
         type: 'article',
-        title: game._name,
+        title: game.name,
         description: game.description,
-        reply_markup: buildLikeKeyboard(game._basename),
+        reply_markup: buildLikeKeyboard(game.basename),
         input_message_content: {
           message_text: stripMargin`
-            |Title: ${game._name}
-            |Year: ${game._year}
+            |Title: ${game.name}
+            |Year: ${game.year}
             |Platforms : ${game.platforms}
             |Genres: ${game.genres}
           `
         },
       }));
-      ctx.answerInlineQuery(answer);
+      ctx.answerInlineQuery(answer).then(() => {});
     });
   }
 });
@@ -122,22 +122,21 @@ bot.command('start', (ctx) => {
 });
 
 bot.command('recommendstreamer', (ctx) => {
-  console.log("Recommend Streamers");
+  console.log("Recommend Streamers" + ctx.from.id);
   //twitch.getStreamers("Horizon Zero Dawn").then((streams) => {
   let streamDisplay = [];
   graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
 
     for await(const streamer of streamers){
-      console.log(streamer.name);
       documentDAO.getStreamerById(streamer._id).then((s) => {
-        console.log(s.basename);
+        console.log(s.name);
         streamDisplay.push({
           id: s._id,
-          url: "https://www.twitch.tv/" + s.basename,
+          url: "https://www.twitch.tv/" + s.name,
           input_message_content: {
             message_text: stripMargin`
               |User: ${s.name}
-              |Url: ${"https://www.twitch.tv/" + s.basename}
+              |Url: ${"https://www.twitch.tv/" + s.name}
             `}
         });
       });

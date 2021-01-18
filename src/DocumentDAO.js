@@ -38,31 +38,38 @@ class DocumentDAO {
 
   async getGames(search) {
 
-    let groups = await this.gameCollection.aggregate([
+    return this.gameCollection.aggregate([
       {$match: {'name': new RegExp(search, "gi")}},
-      {$limit: 10},
       {
         $group: {
-          _id: {name: "$name", basename: "$basename"},
+          _id: {
+            name: "$name",
+            basename: "$basename",
+          },
           platforms: {$addToSet: "$platform"},
           _year: {$min: "$year"},
           genres: {$addToSet: "$genre"}
         }
       },
-      {$limit: 10}
+      {$limit: 10},
+      {$project: {
+          name: "$_id.name",
+          basename: "$_id.basename",
+          platforms: "$platforms",
+          year: "$_year",
+          genres: "$genres"
+        }}
     ]).toArray();
 // TODO : group.map
 
-        return {
-          name: group._id.name,
-          basename: group._id.basename,
-          platforms: group.platforms,
-          _year: group._year,
-          genres: group.genres
-        };
-      })
-    }
-  );
+    // return {
+    //   name: group._id.name,
+    //   basename: group._id.basename,
+    //   platforms: group.platforms,
+    //   _year: group._year,
+    //   genres: group.genres
+    // };
+  }
 
   async getStrictGames(search) {
     let reg = "^" + search + "$";
