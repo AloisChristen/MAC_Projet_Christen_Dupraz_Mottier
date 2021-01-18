@@ -178,6 +178,14 @@ class GraphDAO {
   }
 
 
+  /*
+  Calcul du score : Pour chaque jeu aimé (RANK > 3) par l'utilisateur, et pour chaque clip que le streamer
+  possède de ce jeux, on donne RANK point.
+  On ajoute également des points bonus (5) pour chaque jeu différent auquel le streamer a joué.
+  (Pour favoriser les streamers qui ont beaucoup de jeux en commun avec l'utilisateur)
+  On donne également des points bonus pour les jeux appartenant au genre que l'utilisateur à liker.
+  (CASE WHEN l2 IS NOT NULL THEN l2.rank ELSE 0 END)
+   */
   recommendStreamers(userId) {
     return this.run(`
       match (u:User{id: $userId})-[l:LIKED]->(g:Game)<-[p:PLAYS_TO]-(s:Streamer)
@@ -193,6 +201,11 @@ class GraphDAO {
     }).then((result) => result.records);
   }
 
+  /*
+  Calcul du score : Pour chaque jeux liké par l'utilisateur appartenant au même genre, on donne RANK points.
+  On rajoute 10 points bonus si le jeu est sur une platforme possédée par l'utilisateur
+  On rajoute des points si le jeux appartient à un genre aimé par l'utilisateur
+   */
   recommendGames(userId) {
     return this.run(`
       match (u:User{id: $userId})-[l:LIKED]->(g:Game)-[:BELONGS_TO]->(t:Genre)<-[:BELONGS_TO]-(g2:Game)
