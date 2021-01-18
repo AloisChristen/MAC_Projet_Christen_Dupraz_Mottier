@@ -16,18 +16,19 @@ class GraphDAO {
     return this.driver.close();
   }
 
-  upsertGameLiked(user, gameId, liked) {
+  upsertGameLiked(user, gameName, liked) {
 
     console.log("userId : " + this.toInt(user.id));
     console.log("isBot : " + user.is_bot);
     console.log("firstName : " + user.first_name);
     console.log("lastName : " + user.last_name);
     console.log("languageCode : " + user.language_code);
-    console.log("likedRank : " + user.rank);
+    console.log("likedRank : " + this.toInt(liked.rank));
     console.log("likedAt : " + this.toDate(liked.at));
-    console.log("Upsert Game liked : " + gameId);
+    console.log("Upsert Game liked : " + gameName);
+    this.get
     return this.run(`
-      MATCH (m:Game {name: $gameId})
+      MATCH (m:Game {basename: $gameName})
         MERGE (u:User {id: $userId})
           ON CREATE SET u.isBot = $isBot,
                         u.firstName = $firstName,
@@ -45,14 +46,14 @@ class GraphDAO {
           ON MATCH SET  l.rank = $likedRank,
                         l.at = $likedAt
     `, {
-      gameId: gameId,
+      gameName: gameName,
       userId: this.toInt(user.id),
       isBot: user.is_bot,
       firstName: user.first_name,
       lastName: user.last_name,
       languageCode: user.language_code,
       username: user.username,
-      likedRank: liked.rank,
+      likedRank: this.toInt(liked.rank),
       likedAt: this.toDate(liked.at),
     });
   }

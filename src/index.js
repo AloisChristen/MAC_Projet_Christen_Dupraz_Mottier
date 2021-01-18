@@ -44,15 +44,16 @@ bot.on('inline_query', (ctx) => {
   const query = ctx.inlineQuery;
   if (query) {
     documentDAO.getGames(query.query).then((games) => {
+
       const answer = games.map((game) => ({
-        id: game._id,
+        id: "" + game._id,
         type: 'article',
-        title: game._id,
+        title: game._name,
         description: game.description,
-        reply_markup: buildLikeKeyboard(game._id),
+        reply_markup: buildLikeKeyboard(game._basename),
         input_message_content: {
           message_text: stripMargin`
-            |Title: ${game._id}
+            |Title: ${game._name}
             |Year: ${game._year}
             |Platforms : ${game.platforms}
             |Genres: ${game.genres}

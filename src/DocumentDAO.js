@@ -36,19 +36,33 @@ class DocumentDAO {
     return this.streamerCollection.insertOne(streamer);
   }
 
-  getGames(search) {
+  async getGames(search) {
 
-    return this.gameCollection.aggregate([
-      { $match: { 'name': new RegExp(search, "gi") }},
-      { $limit: 10},
-      { $group: { _id: "$name",
-                  platform: {$addToSet: "$platform"},
-                  _year: { $min: "$year"},
-                  genres: {$addToSet: "$genre"}
-      }},
-      { $limit: 10}
+    let groups = await this.gameCollection.aggregate([
+      {$match: {'name': new RegExp(search, "gi")}},
+      {$limit: 10},
+      {
+        $group: {
+          _id: {name: "$name", basename: "$basename"},
+          platforms: {$addToSet: "$platform"},
+          _year: {$min: "$year"},
+          genres: {$addToSet: "$genre"}
+        }
+      },
+      {$limit: 10}
     ]).toArray();
-  }
+// TODO : group.map
+
+        return {
+          name: group._id.name,
+          basename: group._id.basename,
+          platforms: group.platforms,
+          _year: group._year,
+          genres: group.genres
+        };
+      })
+    }
+  );
 
   async getStrictGames(search) {
     let reg = "^" + search + "$";
