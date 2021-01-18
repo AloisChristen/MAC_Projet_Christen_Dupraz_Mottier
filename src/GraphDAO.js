@@ -64,11 +64,6 @@ class GraphDAO {
     });
   }
 
-  getGenresByGameId(gameId){
-    return this.run(`MATCH(:Game{id: $gameId})-[l:BELONGS_TO]->()
-    `);
-  }
-
   upsertGame(gameId, basename) {
     return this.run(
         `MERGE (m:Game{id: $gameId})
@@ -80,16 +75,6 @@ class GraphDAO {
     });
   }
 
-  upsertRelationGameStreamer(streamerId, gameId){
-    return this.run(`
-      MATCH (g:Game{ id: $gameId })
-      MATCH (s:Streamer{id: $streamerId})
-      MERGE (s)-[r:PLAYS_TO]->(g)
-      `, {
-      gameId,
-      streamerId
-    });
-  }
 
   upsertPlatform(gameId, platform) {
     return this.run(`
@@ -155,36 +140,6 @@ class GraphDAO {
     });
   }
 
-  upsertAdded(userId, gameId, added) {
-    return this.run(`
-      MATCH (m:Game{ id: $gameId })
-      MATCH (u:User{ id: $userId })
-      MERGE (u)-[r:ADDED]->(m)
-        ON CREATE SET r.at = $at
-        ON MATCH SET  r.at = $at
-    `, {
-      userId: this.toInt(userId),
-      gameId,
-      at: this.toDate(added.at),
-    });
-  }
-
-  upsertGameUserLiked(userId, gameId, liked) {
-    return this.run(`
-      MATCH (m:Game{ id: $gameId })
-      MATCH (u:User{ id: $userId })
-      MERGE (u)-[r:LIKED]->(m)
-        ON CREATE SET r.at = $at,
-                      r.rank = $rank
-        ON MATCH SET  r.at = $at,
-                      r.rank = $rank
-    `, {
-      userId: this.toInt(userId),
-      gameId,
-      at: this.toDate(liked.at),
-      rank: this.toInt(liked.rank)
-    });
-  }
 
    upsertGenreLiked(userId, genreId, liked) {
     return this.run(`
@@ -222,59 +177,6 @@ class GraphDAO {
     });
   }
 
-  upsertRequested(userId, gameId, requested) {
-    return this.run(`
-      MATCH (m:Game{ id: $gameId })
-      MATCH (u:User{ id: $userId })
-      MERGE (u)-[r:REQUESTED]->(m)
-        ON CREATE SET r.at = $at
-        ON MATCH SET  r.at = $at
-    `, {
-      userId: this.toInt(userId),
-      gameId,
-      at: this.toDate(requested.at),
-    });
-  }
-
-  upsertCommentAboutGame(userId, gameId, comment) {
-    return this.run(`
-      MATCH (m:Game{ id: $gameId })
-      MATCH (u:User{ id: $userId })
-      MERGE (c:Comment{ id: $commentId })
-        ON CREATE SET c.text = $commentText,
-                      c.at = $commentAt
-        ON MATCH SET  c.text = $commentText,
-                      c.at = $commentAt
-      MERGE (u)-[r:WROTE]->(c)
-      MERGE (c)-[r:ABOUT]->(m)
-    `, {
-      userId: this.toInt(userId),
-      gameId,
-      commentId: this.toInt(comment.id),
-      commentAt: this.toDate(comment.at),
-      commentText: comment.text
-    });
-  }
-
-  upsertCommentAbountComment(userId, commentId, comment) {
-    return this.run(`
-      MATCH (cc:Comment{ id: $commentId })
-      MATCH (u:User{ id: $userId })
-      MERGE (c:Comment{ id: $subCommentId })
-        ON CREATE SET c.text = $subCommentText,
-                      c.at = $subCommentAt
-        ON MATCH SET  c.text = $subCommentText,
-                      c.at = $subCommentAt
-      MERGE (u)-[r:WROTE]->(c)
-      MERGE (c)-[r:ABOUT]->(cc)
-    `, {
-      userId: this.toInt(userId),
-      commentId: this.toInt(commentId),
-      subCommentId: this.toInt(comment.id),
-      subCommentAt: this.toDate(comment.at),
-      subCommentText: comment.text
-    });
-  }
 
   recommendStreamers(userId) {
     return this.run(`

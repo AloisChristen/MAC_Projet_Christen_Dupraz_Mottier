@@ -38,55 +38,34 @@ async function emptyMongo() {
 
 async function parseAllGames() {
     console.log('Parsing CSV');
-    let parsedGames = await parseCSV(twitchGamesCSV);
+    let parsedGames = await parseCSV(allGamesCSV);
     console.log("Writing games to mongo");
     const parseGamesBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     parseGamesBar.start(parsedGames.length, 0);
     // games_old.csv format
-    // return Promise.all(parsedGames.slice(1).map((it) => {
-    //   const [
-    //     basename,
-    //     name,
-    //     genre,
-    //     platform,
-    //     publisher,
-    //     developer,
-    //     critic_score,
-    //     user_score,
-    //     year
-    //   ] = it;
-    //   documentDAO.insertGame({
-    //     basename,
-    //     name,
-    //     genre,
-    //     platform,
-    //     publisher,
-    //     developer,
-    //     critic_score,
-    //     user_score,
-    //     year
-    //   }).then(() => parseGamesBar.increment());
-       await Promise.all(parsedGames.slice(1).map((it) => {
-            const [
-                _id,
-                basename,
-                name,
-                year,
-                platforms,
-                genres,
-                critic_score,
-                user_score
-            ] = it;
-            documentDAO.insertGame({
-                _id,
-                basename,
-                name,
-                year,
-                platforms,
-                genres,
-                critic_score,
-                user_score
-            }).then(() => parseGamesBar.increment());
+    return Promise.all(parsedGames.slice(1).map((it) => {
+      const [
+        basename,
+        name,
+        genre,
+        platform,
+        publisher,
+        developer,
+        critic_score,
+        user_score,
+        year
+      ] = it;
+      documentDAO.insertGame({
+        basename,
+        name,
+        genre,
+        platform,
+        publisher,
+        developer,
+        critic_score,
+        user_score,
+        year
+      }).then(() => parseGamesBar.increment());
     })).then(() => {
         parseGamesBar.stop();
     });
@@ -223,11 +202,11 @@ async function prepareMongo() {
 
 // MAIN
 async function main() {
-   await prepareMongo();
-   // Creating TwitchGames CSV;
-   //  let gamesSelection = await selectTwitchGames(500);
-    let gamesSelection = await documentDAO.getAllGames();
-    // await writeGamesCSV(gamesSelection);
+    await prepareMongo();
+    // Creating TwitchGames CSV
+    let gamesSelection = await selectTwitchGames(500);
+    await writeGamesCSV(gamesSelection);
+    // Creatting TwitchStreamers CSV
     let streamersSelection = await selectTwitchStreamers(100, gamesSelection);
     await writeStreamerCSV(streamersSelection);
 }

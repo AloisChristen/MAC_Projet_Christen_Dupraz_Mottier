@@ -127,7 +127,7 @@ async function parseStreamers() {
   const parseStreamersBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   parseStreamersBar.start(parsedStreamers.length, 0);
 
-  // twitch games CSV format
+  // twitch streamers CSV format
   /**/
   await Promise.all(parsedStreamers.slice(1).map((it) => {
     const [
@@ -150,6 +150,8 @@ async function loadGames() {
 }
 
 async function loadStreamers() {
+  // Load them back to get their id along
+  console.log('Loading streamers back in memory');
   return await documentDAO.getAllStreamers();
 }
 
@@ -232,32 +234,6 @@ async function addData() {
   await addMoreData(games, platforms, genres);
   await sleep(500);
   await insertStreamerInNeo4j(streamers);
-}
-
-async function loadStreamerFromGames(games) {
-  games.forEach((game) => loadStreamerFromGame(game));
-}
-
-async function loadFakeRelationGameStreamer() {
-  documentDAO.getAllStreamers().then((streamer) => {
-    documentDAO.getRandomGames(5).then((game) => graphDAO.upsertRelationGameStreamer(streamer.id, game._id));
-  });
-}
-
-async function loadStreamerFromGame(game) {
-  let twitchGame = await twitch_API.getGame(game);
-  let streams = await twitchGame.getStreams();
-  streams.data.forEach((stream) => {
-    stream.getUser().then((streamer) => {
-      documentDAO.insertStreamer({
-        displayName: streamer.displayName,
-        name: streamer.name,
-        _id: streamer.id,
-        language: streamer.language,
-      });
-      graphDAO.upsertStreamer(streamer.id, streamer.name, game._id).then(() => { });
-    });
-  });
 }
 
 // MAIN

@@ -49,15 +49,6 @@ class DocumentDAO {
           genres: "$genres"
         }}
     ]).toArray();
-// TODO : group.map
-
-    // return {
-    //   name: group._id.name,
-    //   basename: group._id.basename,
-    //   platforms: group.platforms,
-    //   _year: group._year,
-    //   genres: group.genres
-    // };
   }
 
   async getStrictGames(search) {
@@ -82,10 +73,6 @@ class DocumentDAO {
 
   getGameById(id) {
     return this.gameCollection.findOne({ _id: id });
-  }
-
-  getRandomGames(n) {
-    return this.gameCollection.aggregate([{ $sample: { size: n } }]).toArray();
   }
 
   async getAllGames() {
