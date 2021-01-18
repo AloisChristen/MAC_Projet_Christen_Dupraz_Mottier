@@ -36,18 +36,39 @@ class DocumentDAO {
     return this.streamerCollection.insertOne(streamer);
   }
 
-  getGames(search) {
+  async getGames(search) {
 
     return this.gameCollection.aggregate([
-      { $match: { 'name': new RegExp(search, "gi") }},
-      { $limit: 10},
-      { $group: { _id: "$name",
-                  platform: {$addToSet: "$platform"},
-                  _year: { $min: "$year"},
-                  genres: {$addToSet: "$genre"}
-      }},
-      { $limit: 10}
+      {$match: {'name': new RegExp(search, "gi")}},
+      {
+        $group: {
+          _id: {
+            name: "$name",
+            basename: "$basename",
+          },
+          platforms: {$addToSet: "$platform"},
+          _year: {$min: "$year"},
+          genres: {$addToSet: "$genre"}
+        }
+      },
+      {$limit: 10},
+      {$project: {
+          name: "$_id.name",
+          basename: "$_id.basename",
+          platforms: "$platforms",
+          year: "$_year",
+          genres: "$genres"
+        }}
     ]).toArray();
+// TODO : group.map
+
+    // return {
+    //   name: group._id.name,
+    //   basename: group._id.basename,
+    //   platforms: group.platforms,
+    //   _year: group._year,
+    //   genres: group.genres
+    // };
   }
 
   async getStrictGames(search) {
@@ -95,7 +116,7 @@ class DocumentDAO {
   }
 
   async getStreamerById(streamerId){
-    return this.streamerCollection.findOne({ _id: streamerId });
+    return this.streamerCollection.findOne({ id: streamerId });
   }
 
 }
