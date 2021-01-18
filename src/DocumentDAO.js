@@ -116,7 +116,7 @@ class DocumentDAO {
   }
 
   async getStreamerById(streamerId){
-    return this.streamerCollection.findOne({ _id: streamerId });
+    return this.streamerCollection.findOne({ id: streamerId });
   }
 
 }

@@ -128,10 +128,9 @@ bot.command('recommendstreamer', (ctx) => {
   graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
 
     for await(const streamer of streamers){
-      documentDAO.getStreamerById(streamer._id).then((s) => {
-        console.log(s.name);
+     await documentDAO.getStreamerById(streamer._fields[0]).then((s) => {
         streamDisplay.push({
-          id: s._id,
+          id: s.id,
           url: "https://www.twitch.tv/" + s.name,
           input_message_content: {
             message_text: stripMargin`
@@ -141,12 +140,37 @@ bot.command('recommendstreamer', (ctx) => {
         });
       });
     }
+    for (const current in streamDisplay) {
+      ctx.reply(streamDisplay[current].input_message_content.message_text).then(() =>{});
+    }
   });
-  for (var current in streamDisplay) {
-    ctx.reply(streamDisplay[current].input_message_content.message_text);
-    //ctx.editMessageReplyMarkup(buildLikeKeyboard(streamDisplay[current].title));
-  }
+
 });
+
+bot.command( 'recommendgame', (ctx) => {
+  console.log("Recommend Games" + ctx.from.id);
+
+  let streamDisplay = [];
+  graphDAO.recommendStreamers(ctx.from.id).then(async (streamers) => {
+
+    for await(const streamer of streamers){
+      await documentDAO.getStreamerById(streamer._fields[0]).then((s) => {
+        streamDisplay.push({
+          id: s.id,
+          url: "https://www.twitch.tv/" + s.name,
+          input_message_content: {
+            message_text: stripMargin`
+              |User: ${s.name}
+              |Url: ${"https://www.twitch.tv/" + s.name}
+            `}
+        });
+      });
+    }
+    for (const current in streamDisplay) {
+      ctx.reply(streamDisplay[current].input_message_content.message_text).then(() =>{});
+    }
+  });
+})
 
 
 
