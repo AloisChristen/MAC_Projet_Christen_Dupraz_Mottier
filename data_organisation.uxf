@@ -17,18 +17,20 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>80</x>
-      <y>120</y>
-      <w>70</w>
+      <x>100</x>
+      <y>110</y>
+      <w>90</w>
       <h>150</h>
     </coordinates>
-    <panel_attributes>GameData
+    <panel_attributes>Game
 --
 name
+basename
 year
-platform
-genre
-note</panel_attributes>
+platforms
+genres
+critic_score
+user_score</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
@@ -47,30 +49,17 @@ note</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>240</x>
-      <y>120</y>
+      <x>200</x>
+      <y>110</y>
       <w>80</w>
       <h>80</h>
     </coordinates>
     <panel_attributes>Streamers
 --
-Name
-twichId
-lastStream
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <id>UMLClass</id>
-    <coordinates>
-      <x>160</x>
-      <y>120</y>
-      <w>70</w>
-      <h>60</h>
-    </coordinates>
-    <panel_attributes>Users
---
-Name
+id
+name
+games_played
+plays_count
 </panel_attributes>
     <additional_attributes/>
   </element>
@@ -176,5 +165,29 @@ like</panel_attributes>
     <panel_attributes>lt=&lt;-
 is</panel_attributes>
     <additional_attributes>10.0;70.0;40.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>510</x>
+      <y>180</y>
+      <w>310</w>
+      <h>270</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+owns</panel_attributes>
+    <additional_attributes>290.0;230.0;290.0;250.0;10.0;250.0;10.0;10.0;40.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>560</x>
+      <y>200</y>
+      <w>50</w>
+      <h>190</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+like</panel_attributes>
+    <additional_attributes>10.0;170.0;10.0;10.0</additional_attributes>
   </element>
 </diagram>
