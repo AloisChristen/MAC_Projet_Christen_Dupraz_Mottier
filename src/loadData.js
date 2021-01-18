@@ -53,6 +53,7 @@ const users = [
   buildUser(136451862, 'NukedFace', 'marcus', '', 'fr', false),
   buildUser(136451863, 'lauralol', 'laura', '', 'fr', false),
   buildUser(136451864, 'Saumonlecitron', 'jean-michel', '', 'fr', false),
+  buildUser(136415864, 'GTZL1', 'david', 'dupraz', 'fr', false),
 ];
 
 const graphDAO = new GraphDAO();
@@ -228,7 +229,7 @@ async function addData() {
   await sleep(500);
   await addMoreData(games, platforms, genres);
   await sleep(500);
-  //await insertStreamerInNeo4j(streamers);
+  await insertStreamerInNeo4j(streamers);
 }
 
 async function loadStreamerFromGames(games) {
@@ -285,7 +286,7 @@ async function addMoreData(games, platforms, genres) {
   Promise.all(addedPromise).then(() => {*/
   // Add some games liked by users
   console.log('Add some games liked by users');
-  const likePromise = [280, 34, 98, 254, 0].flatMap((quantity, index) => {
+  const likePromise = [280, 34, 98, 254, 0, 129].flatMap((quantity, index) => {
     return shuffle(games).slice(0, quantity).map((game) => {
       return graphDAO.upsertGameLiked(users[index], game.basename, {
         rank: Math.floor(Math.random() * 5) + 1,
@@ -297,10 +298,10 @@ async function addMoreData(games, platforms, genres) {
 
     // Add some platforms liked by users
     console.log('Add some platforms liked by users');
-    const plaformPromise = [300, 674, 0, 45, 36].flatMap((quantity, index) => {
+    const plaformPromise = [300, 674, 0, 45, 36, 77].flatMap((quantity, index) => {
       return shuffle(platforms).slice(0, quantity).map((platform) => {
-        console.log(platform);
-        return graphDAO.upsertPlatformLiked(users[index], platform, {
+        let pName=platform[1];
+        return graphDAO.upsertPlatformLiked(users[index], pName, {
           rank: Math.floor(Math.random() * 5) + 1,
           at: new Date(160613000 * 1000 + (Math.floor(Math.random() * 3124) * 1000))
         });

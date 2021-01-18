@@ -203,18 +203,20 @@ class GraphDAO {
     });
   }
 
-  upsertPlatformLiked(user, platform, liked) {
+  upsertPlatformLiked(user, platformName, liked) {
+    console.log(user.username);
+    console.log(platformName);
     return this.run(`
       MATCH (a:Platform{ name: $platform })
-      MATCH (u:User{ id: $username })
-      MERGE (u)-[r:LIKED]->(g)
+      MATCH (u:User{ id: $userId })
+      MERGE (u)-[r:OWNS]->(a)
       ON CREATE SET r.at = $at,
                     r.rank = $rank
       ON MATCH SET  r.at = $at,
                     r.rank = $rank
     `, {
-      username: user.username,
-      platform: platform,
+      userId: this.toInt(user.id),
+      platform: platformName,
       at: this.toDate(liked.at),
       rank: this.toInt(liked.rank)
     });
